@@ -1,0 +1,24 @@
+// One session's whole life: start → prompt → tools → permission → tools → stop → idle → end.
+{"at": 0.0, "event": "SessionStart", "session": "life-1", "project": "api-server", "source": "startup"}
+{"at": 0.1, "expect": {"session": "life-1", "status": "idle"}}
+{"at": 1.0, "event": "UserPromptSubmit", "session": "life-1", "project": "api-server"}
+{"at": 1.1, "expect": {"session": "life-1", "status": "working:thinking"}}
+{"at": 2.0, "event": "PreToolUse", "session": "life-1", "project": "api-server", "tool": "Read"}
+{"at": 2.1, "expect": {"session": "life-1", "status": "working:reading"}}
+{"at": 4.0, "event": "PostToolUse", "session": "life-1", "project": "api-server", "tool": "Read"}
+{"at": 5.0, "event": "PreToolUse", "session": "life-1", "project": "api-server", "tool": "Edit"}
+{"at": 5.1, "expect": {"session": "life-1", "status": "working:editing"}}
+{"at": 7.0, "event": "PostToolUse", "session": "life-1", "project": "api-server", "tool": "Edit"}
+{"at": 8.0, "event": "PermissionRequest", "session": "life-1", "project": "api-server", "tool": "Bash"}
+{"at": 8.1, "expect": {"session": "life-1", "status": "needsYou"}}
+{"at": 14.0, "event": "PreToolUse", "session": "life-1", "project": "api-server", "tool": "Bash"}
+{"at": 14.1, "expect": {"session": "life-1", "status": "working:running"}}
+{"at": 18.0, "event": "PostToolUse", "session": "life-1", "project": "api-server", "tool": "Bash"}
+{"at": 19.0, "event": "PreToolUse", "session": "life-1", "project": "api-server", "tool": "Grep"}
+{"at": 20.0, "event": "PostToolUse", "session": "life-1", "project": "api-server", "tool": "Grep"}
+{"at": 22.0, "event": "Stop", "session": "life-1", "project": "api-server"}
+{"at": 22.1, "expect": {"session": "life-1", "status": "finished"}}
+{"at": 29.0, "tick": true}
+{"at": 29.1, "expect": {"session": "life-1", "status": "idle"}}
+{"at": 31.0, "event": "SessionEnd", "session": "life-1", "project": "api-server", "reason": "prompt_input_exit"}
+{"at": 31.1, "expect": {"session": "life-1", "status": "gone"}}

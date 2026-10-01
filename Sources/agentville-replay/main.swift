@@ -4,9 +4,7 @@
 //   agentville-replay <scenario.jsonl> [--speed 2] [--socket /path]
 //   agentville-replay --generate burst|hundred [--seconds 10] [--rate 500]
 //
-// Scenario format: one JSON object per line: {"at": <seconds>, "event": "...", "session": "...", ...}.
-// Any WireEvent field may appear; "v" and "ts" are filled in. A line {"at": t, "raw": "<text>"} sends the
-// raw text as-is (for malformed-input scenarios). Lines starting with "//" are comments.
+// Scenario format: see AgentvilleCore/Sessions/Scenario.swift. `expect`/`tick` lines are test-only and skipped.
 import AgentvilleCore
 import Foundation
 
@@ -44,28 +42,13 @@ func loadScenario(_ path: String) -> [Step] {
     guard let text = try? String(contentsOfFile: path, encoding: .utf8) else {
         FileHandle.standardError.write(Data("cannot read \(path)\n".utf8)); exit(1)
     }
-    var steps: [Step] = []
-    for (n, line) in text.split(separator: "\n").enumerated() {
-        let l = line.trimmingCharacters(in: .whitespaces)
-        if l.isEmpty || l.hasPrefix("//") { continue }
-        guard let obj = try? JSONSerialization.jsonObject(with: Data(l.utf8)) as? [String: Any],
-              let at = obj["at"] as? Double
-        else { FileHandle.standardError.write(Data("line \(n + 1): needs {\"at\": seconds, ...}\n".utf8)); exit(1) }
-        if let raw = obj["raw"] as? String {
-            steps.append(Step(at: at, payload: Data(raw.utf8)))
-            continue
+    do {
+        return try Scenario.parse(text).steps.compactMap { s in
+            Scenario.datagram(for: s.step).map { Step(at: s.at, payload: $0) }
         }
-        var fields = obj
-        fields["at"] = nil
-        fields["v"] = WireEvent.version
-        fields["ts"] = 0
-        guard let data = try? JSONSerialization.data(withJSONObject: fields),
-              var ev = try? JSONDecoder().decode(WireEvent.self, from: data)
-        else { FileHandle.standardError.write(Data("line \(n + 1): not a valid WireEvent\n".utf8)); exit(1) }
-        ev.ts = 0
-        steps.append(Step(at: at, payload: WireCodec.encode(ev) ?? Data()))
+    } catch {
+        FileHandle.standardError.write(Data("\(path): \(error)\n".utf8)); exit(1)
     }
-    return steps.sorted { $0.at < $1.at }
 }
 
 /// Synthetic load: many sessions with a realistic tool mix.

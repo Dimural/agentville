@@ -1,0 +1,10 @@
+// Hostile and broken datagrams. The app must drop all of them and keep working.
+{"at": 0.0, "raw": "{not json"}
+{"at": 0.1, "raw": "[1,2,3]"}
+{"at": 0.2, "raw": "{\"v\":2,\"event\":\"Stop\",\"session\":\"m\",\"project\":\"p\",\"ts\":1}"}
+{"at": 0.3, "raw": "{\"v\":1,\"event\":\"Explode\",\"session\":\"m\",\"project\":\"p\",\"ts\":1}"}
+{"at": 0.4, "raw": "{\"v\":1,\"event\":\"Stop\",\"session\":\"\",\"project\":\"p\",\"ts\":1}"}
+{"at": 0.5, "raw": "{\"v\":1,\"event\":\"PreToolUse\",\"session\":\"hostile/../1\",\"project\":\"/etc/passwd\",\"tool\":\"mcp__evil__x\",\"ts\":1}"}
+{"at": 1.0, "event": "UserPromptSubmit", "session": "after-junk", "project": "still-fine"}
+{"at": 1.1, "expect": {"session": "after-junk", "status": "working:thinking"}}
+{"at": 1.1, "expect": {"session": "m", "status": "gone"}}

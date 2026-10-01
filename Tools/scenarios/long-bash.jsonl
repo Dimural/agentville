@@ -1,0 +1,8 @@
+// A long Bash command: PreToolUse then 20 minutes of silence. Must NOT be pruned as stale.
+{"at": 0.0, "event": "UserPromptSubmit", "session": "long-1", "project": "infra"}
+{"at": 1.0, "event": "PreToolUse", "session": "long-1", "project": "infra", "tool": "Bash"}
+{"at": 1200.0, "tick": true}
+{"at": 1200.1, "expect": {"session": "long-1", "status": "working:running"}}
+{"at": 1260.0, "event": "PostToolUse", "session": "long-1", "project": "infra", "tool": "Bash"}
+{"at": 1261.0, "event": "Stop", "session": "long-1", "project": "infra"}
+{"at": 1261.1, "expect": {"session": "long-1", "status": "finished"}}

@@ -1,0 +1,27 @@
+// The prototype's opening scene: 5 sessions. blog finishes at about 5 s; dotfiles asks for permission at about 15 s.
+{"at": 0.0, "event": "UserPromptSubmit", "session": "demo-api", "project": "api-server"}
+{"at": 0.0, "event": "PreToolUse", "session": "demo-api", "project": "api-server", "tool": "Edit"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "demo-crew", "project": "agentville"}
+{"at": 0.0, "event": "PreToolUse", "session": "demo-crew", "project": "agentville", "tool": "Bash"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "demo-blog", "project": "blog"}
+{"at": 0.0, "event": "PreToolUse", "session": "demo-blog", "project": "blog", "tool": "Read"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "demo-ml", "project": "ml-notebook"}
+{"at": 0.0, "event": "SubagentStart", "session": "demo-ml", "project": "ml-notebook", "agent_id": "sub-1", "agent_type": "Explore"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "demo-dot", "project": "dotfiles"}
+{"at": 0.0, "event": "PreToolUse", "session": "demo-dot", "project": "dotfiles", "tool": "Grep"}
+{"at": 0.1, "expect": {"session": "demo-ml", "status": "working:thinking"}}
+{"at": 0.1, "expect": {"session": "demo-dot", "status": "working:searching"}}
+{"at": 4.0, "event": "PostToolUse", "session": "demo-api", "project": "api-server", "tool": "Edit"}
+{"at": 4.5, "event": "PreToolUse", "session": "demo-api", "project": "api-server", "tool": "Write"}
+{"at": 5.5, "event": "Stop", "session": "demo-blog", "project": "blog"}
+{"at": 5.6, "expect": {"session": "demo-blog", "status": "finished"}}
+{"at": 7.0, "event": "PostToolUse", "session": "demo-crew", "project": "agentville", "tool": "Bash"}
+{"at": 7.5, "event": "PreToolUse", "session": "demo-crew", "project": "agentville", "tool": "WebSearch"}
+{"at": 7.6, "expect": {"session": "demo-crew", "status": "working:web"}}
+{"at": 12.0, "tick": true}
+{"at": 12.1, "expect": {"session": "demo-blog", "status": "idle"}}
+{"at": 15.0, "event": "PermissionRequest", "session": "demo-dot", "project": "dotfiles", "tool": "Bash"}
+{"at": 15.1, "expect": {"session": "demo-dot", "status": "needsYou"}}
+{"at": 18.0, "event": "SubagentStop", "session": "demo-ml", "project": "ml-notebook", "agent_id": "sub-1", "agent_type": "Explore"}
+{"at": 31.0, "event": "PreToolUse", "session": "demo-dot", "project": "dotfiles", "tool": "Bash"}
+{"at": 31.1, "expect": {"session": "demo-dot", "status": "working:running"}}

@@ -1,0 +1,7 @@
+// A session whose terminal was killed: no SessionEnd. Pruned after the working staleness limit (15 min).
+{"at": 0.0, "event": "UserPromptSubmit", "session": "ghost-1", "project": "scraper"}
+{"at": 1.0, "event": "PostToolUse", "session": "ghost-1", "project": "scraper", "tool": "Read"}
+{"at": 600.0, "tick": true}
+{"at": 600.1, "expect": {"session": "ghost-1", "status": "working:thinking"}}
+{"at": 902.0, "tick": true}
+{"at": 902.1, "expect": {"session": "ghost-1", "status": "gone"}}
