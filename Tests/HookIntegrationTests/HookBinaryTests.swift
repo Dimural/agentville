@@ -136,29 +136,35 @@ struct HookBinaryTests {
         let exe = try hookBinary(), sock = SocketFixture()
         let onCI = ProcessInfo.processInfo.environment["CI"] != nil
         let input = event("PreToolUse", ["tool_name": "Bash"])
-        func sample(_ exe: URL, _ env: [String: String]) throws -> (median: Double, p99: Double) {
-            var times: [Double] = []
-            for _ in 0..<120 { times.append(try run(exe, stdin: input, env: env).seconds) }
-            times.sort()
-            return (times[times.count / 2], times[Int(Double(times.count) * 0.99) - 1])
+        struct Stats: CustomStringConvertible {
+            var median, p90, p99: Double
+            var description: String { String(format: "median %.1f ms, p90 %.1f ms, p99 %.1f ms", median * 1000, p90 * 1000, p99 * 1000) }
         }
-        // Baseline: spawning a do-nothing process with the same stdin. Shared CI VMs spend ~130 ms
-        // here, which is the harness, not the hook, so the budget applies to the hook's *added* cost.
+        func sample(_ exe: URL, _ env: [String: String]) throws -> Stats {
+            // Warm-up: a freshly built binary's first launches pay one-off costs (signature checks, page cache).
+            for _ in 0..<5 { _ = try run(exe, stdin: input, env: env) }
+            var t: [Double] = []
+            for _ in 0..<120 { t.append(try run(exe, stdin: input, env: env).seconds) }
+            t.sort()
+            return Stats(median: t[t.count / 2], p90: t[Int(Double(t.count) * 0.9) - 1], p99: t[Int(Double(t.count) * 0.99) - 1])
+        }
+        // Baseline: spawning a do-nothing process with the same stdin, so we measure the hook's added cost.
         let baseline = try sample(URL(fileURLWithPath: "/usr/bin/true"), [:])
         let listening = try sample(exe, ["AGENTVILLE_SOCKET": sock.path])
         let absent = try sample(exe, ["AGENTVILLE_SOCKET": "/nonexistent/agentville.sock"])
         _ = sock.drain()
-        let info = "baseline \(baseline), listening \(listening), absent \(absent)"
+        let info = "baseline [\(baseline)] listening [\(listening)] absent [\(absent)]"
 
-        // The hook's own work (median over baseline) must be small everywhere.
+        // Typical added cost: robust everywhere.
         #expect(listening.median - baseline.median < 0.020, "\(info)")
         #expect(absent.median - baseline.median < 0.010, "\(info)")
-        // Tails: added p99 within budget; CI gets 2× slack for VM noise (docs/quality/testing-strategy.md).
-        let slack = onCI ? 2.0 : 1.0
-        #expect(listening.p99 - baseline.p99 < 0.050 * slack, "\(info)")
-        #expect(absent.p99 - baseline.p99 < 0.050 * slack, "\(info)")
-        // On a real Mac, the absolute wall time (spawn included) must meet the budget too.
-        if !onCI {
+        if onCI {
+            // Shared CI VMs show rare 100-200 ms scheduling spikes in single runs (first CI runs, 2026-10-01),
+            // so p99 there measures the VM. Assert p90 instead (docs/quality/testing-strategy.md).
+            #expect(listening.p90 - baseline.p90 < 0.050, "\(info)")
+            #expect(absent.p90 - baseline.p90 < 0.050, "\(info)")
+        } else {
+            // On a real Mac the full budget applies: absolute wall time, spawn included.
             #expect(listening.p99 < 0.050, "\(info)")
             #expect(absent.p99 < 0.050, "\(info)")
         }
