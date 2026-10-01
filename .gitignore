@@ -1,0 +1,20 @@
+# Owner's local reference files: ground truth, intentionally NOT committed.
+# See docs/reference/README.md for what they contain and how to use them.
+/Pixel Crew.html
+/PROJECT_BRIEF.md
+/reference-local/
+
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+dist/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
