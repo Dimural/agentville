@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M1** (data path). M0 is done apart from the owner's answers. Core, the hook, the store and the replay tool are built and tested. Remaining: the app's socket listener and the debug list window.
+**Current milestone: M1** (data path), built and awaiting the owner's look at the debug window. M0 is done apart from the owner's answers. Next: M2.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -34,9 +34,10 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] Look generator with golden vectors
 - [x] `agentville-hook` executable + integration tests (exit 0, empty stdout, socket contents, timing)
 - [x] `SessionStore` with every transition, staleness and stress tests
-- [ ] `SocketListener` in the app (bind, batch, unlink on quit)
+- [x] `SocketListener` in the app (bind, batch, unlink on quit): `SocketListenerTests` (real socket: order, drops, re-sanitize, burst batching, socket → store equals direct apply, unlink only our own file). Manual 2026-10-01: replay `demo-mix` and a 1,080-event burst all accepted; quit by SIGTERM/SIGINT leaves no socket file; 0.00 s CPU over 30 s idle
 - [x] `agentville-replay` + all scenarios in [testing-strategy.md](../quality/testing-strategy.md#replay-scenarios-m1) (scenarios are executable specs)
-- [ ] Debug list window in the app showing live store state
+- [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D)
+- [ ] Owner eyeballs replayed scenarios and a real session (`scripts/dev-link-hook.sh`) in the debug window
 
 ## Later milestones
 

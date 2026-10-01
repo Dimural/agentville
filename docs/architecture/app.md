@@ -7,8 +7,9 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 | Component | Responsibility | Tech |
 |---|---|---|
 | `AppDelegate` | Lifecycle; `.accessory` activation policy (no Dock icon); owns everything below; tears down on quit | AppKit |
-| `SocketListener` | Binds the `AF_UNIX` datagram socket, reads on a background `DispatchSource`, decodes with `WireCodec`, hands events to the store on the main queue **in batches** | Darwin + Dispatch |
+| `SocketListener` (Core, `Transport/`) | Binds the `AF_UNIX` datagram socket (mode 600), drains it on a background `DispatchSource` with one reused buffer, decodes with `WireCodec`, and hands events to the store on the main queue **in batches** of at most `Limits.listenerBatch`. Counts dropped (undecodable) datagrams for diagnostics. `stop()` removes the socket file only if it is still the one this listener bound. Lives in Core so it's tested on a real socket (`SocketListenerTests`) | Darwin + Dispatch |
 | `SessionStore` (Core) | In-memory state machine ([sessions-and-states.md](../product/sessions-and-states.md)); bounded; emits change notifications | Pure Swift |
+| Debug list window (M1 only) | `DebugWindowController`: a plain table of live store state (project, status, tool, subagents, turn, last event, quiet time) plus socket counters. Redraws at most at 4 Hz and only while open. Replaced by the desk window's list in M2 | AppKit |
 | `StatusItemController` | Menu bar icon (pixel head, count, red dot), menu | `NSStatusItem` |
 | `DeskWindowController` | The office (12 fps pixel render), summary, session list (4 Hz), Release button | AppKit; office drawn to a `CGImage` from Core's pixel renderer |
 | `OverlayController` | One borderless, transparent, shadowless, click-through window per display; a SpriteKit scene per window; release/recall, roaming, notices, crowd, particles | AppKit + SpriteKit |
@@ -26,16 +27,17 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 ## Performance rules
 
 1. **Idle means idle.** When the crew is inside and no walk-on is active, every overlay scene is **paused** (`isPaused = true`, windows ordered out) and the input poller is stopped. When the desk window is hidden, the office timer is stopped. The only remaining work is the socket's dispatch source.
-2. **Batch UI.** Socket events update the store immediately (cheap). The list and summary redraw on a **4 Hz** timer only if the store's revision changed.
+2. **Batch UI.** Socket events update the store immediately (cheap). The list and summary redraw on a **4 Hz** timer only if the store's revision changed. The status item coalesces updates the same way: the first batch schedules one redraw 0.25 s later, so a storm costs at most 4 redraws a second and a quiet app schedules none.
 3. **Bounded everything.** ≤ 12 roamers, ≤ 3 walk-ons, ≤ 520 particles, ≤ 24 queued notices, ≤ 512 tracked sessions (oldest idle evicted first), diagnostics ring buffer ≤ 200 lines.
 4. **No per-frame allocation in hot paths.** Reuse nodes and particle structs.
 5. **Timers stop when unused.** Use display-link/SpriteKit updates only while a scene is running.
+6. **One coarse clock.** `SessionStore.tick` (finished → idle, staleness) runs every `Timing.storeTick` (5 s, 50% tolerance). Store time is monotonic system uptime.
 
 ## Escape hatches (must never depend on the overlay accepting input)
 
 - The status item menu is always above the overlay (overlay level is below the menu bar).
 - ⌃⌥C toggles the crew from any app.
-- Quit tears down every overlay at once; nothing survives quit.
+- Quit tears down every overlay at once; nothing survives quit. SIGTERM and SIGINT are turned into a normal quit, so `kill` also removes the socket file.
 - Force Quit works as for any app.
 - No login item unless the user opts in.
 
