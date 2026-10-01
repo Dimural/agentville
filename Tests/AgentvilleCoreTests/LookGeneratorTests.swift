@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// Golden tests against vectors generated from the prototype's own `hash`/`rng`/`lookFor`
 /// (docs/reference/README.md#how-to-regenerate-fixtures-from-the-prototype).

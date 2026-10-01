@@ -30,18 +30,18 @@ Plus a dev-only fifth part: **`agentville-replay`** sends scripted `WireEvent`s 
 ## Module boundaries
 
 ```
-AgentvilleCore   (Foundation only, no AppKit, no global state, 100% unit-testable)
-   ├── Wire       HookPayloadFilter, WireEvent, WireCodec, SocketPath
-   ├── Sessions   ActivityMapping, SessionStore, Session, Constants
-   └── Looks      LookHash (hash + rng), Palette, Look, LookGenerator; later: PixelCanvas, SpriteRenderer
-agentville-hook  → AgentvilleCore (Wire only). Tiny; must start fast.
+AgentvilleWire   (Foundation/Darwin only) HookPayloadFilter, Sanitize, WireEvent, WireCodec, SocketPath, DatagramSocket
+AgentvilleCore   (no AppKit, no global state, 100% unit-testable; re-exports AgentvilleWire)
+   ├── Sessions   ActivityMapping, SessionStore, Session, StoreEffect, Scenario, Constants
+   └── Looks      LookHash (hash + rng), RGB, Palette, Look, LookGenerator; later: PixelCanvas, SpriteRenderer
+agentville-hook  → AgentvilleWire only. Tiny (≈150 KB); must start fast.
 agentville-replay→ AgentvilleCore
 Agentville (app) → AgentvilleCore + AppKit + SpriteKit (+ SwiftUI for settings and welcome)
 ```
 
 Rules:
 - **All logic that can be pure is in Core** and tested there. The app target is thin glue and rendering.
-- **The hook depends on nothing but Core/Wire and Foundation/Darwin.** No AppKit; startup time matters.
+- **The hook depends on nothing but AgentvilleWire and Foundation/Darwin.** No AppKit; startup time matters. The compiler enforces this: the hook target can't see Core.
 - **No networking framework is imported anywhere.** Unix-domain sockets go through Darwin's `socket(AF_UNIX, …)`, and CI checks this.
 
 ## Why this design

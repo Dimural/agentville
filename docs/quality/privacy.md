@@ -29,4 +29,4 @@ scripts/check-no-disk-writes.sh    # file-writing APIs only in allowlisted files
 scripts/test.sh --filter Privacy   # secret-marker tests on the hook filter
 ```
 
-Or read `Sources/AgentvilleCore/Wire/HookPayloadFilter.swift`. The whole boundary is in that one file.
+Or read `Sources/AgentvilleWire/HookPayloadFilter.swift` and `Sanitize.swift`. The whole boundary is in those two files.

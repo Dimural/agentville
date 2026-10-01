@@ -10,13 +10,17 @@ let package = Package(
         .executable(name: "agentville-replay", targets: ["agentville-replay"]),
         .executable(name: "Agentville", targets: ["Agentville"]),
         .library(name: "AgentvilleCore", targets: ["AgentvilleCore"]),
+        .library(name: "AgentvilleWire", targets: ["AgentvilleWire"]),
     ],
     targets: [
-        // Pure, testable logic. No AppKit. See docs/architecture/overview.md#module-boundaries.
-        .target(name: "AgentvilleCore"),
+        // The privacy boundary + transport: hook payload filter, WireEvent, codec, socket. Foundation/Darwin only.
+        .target(name: "AgentvilleWire"),
 
-        // The hook Claude Code runs. Must stay tiny and fast (docs/architecture/hook.md).
-        .executableTarget(name: "agentville-hook", dependencies: ["AgentvilleCore"]),
+        // Pure, testable app logic (sessions, looks). No AppKit. See docs/architecture/overview.md#module-boundaries.
+        .target(name: "AgentvilleCore", dependencies: ["AgentvilleWire"]),
+
+        // The hook Claude Code runs. Links only the wire layer, to stay tiny and fast (docs/architecture/hook.md).
+        .executableTarget(name: "agentville-hook", dependencies: ["AgentvilleWire"]),
 
         // Dev tool: sends scripted WireEvents to the app's socket.
         .executableTarget(name: "agentville-replay", dependencies: ["AgentvilleCore"]),
@@ -30,12 +34,12 @@ let package = Package(
 
         .testTarget(
             name: "AgentvilleCoreTests",
-            dependencies: ["AgentvilleCore"],
+            dependencies: ["AgentvilleCore", "AgentvilleWire"],
             resources: [.copy("Fixtures")]
         ),
         .testTarget(
             name: "HookIntegrationTests",
-            dependencies: ["AgentvilleCore"]
+            dependencies: ["AgentvilleCore", "AgentvilleWire"]
         ),
     ]
 )

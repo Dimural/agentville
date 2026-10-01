@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// Non-negotiable #11: event storms from 100 sessions must not stall or grow without bound.
 @Suite("Session store under load")

@@ -85,7 +85,7 @@ The app treats every datagram as untrusted:
 
 ## Done when
 
-- [ ] `HookPayloadFilter` implements every rule above; one test per rule
-- [ ] Fuzz-style test: random JSON with secret markers in every non-allowlisted field → no marker in the output
-- [ ] `WireCodec` round-trips, rejects oversize, wrong-version and unknown-event datagrams
-- [ ] Registered events in `Plugin/agentville/hooks/hooks.json` == `WireEvent.Kind.allCases` (test)
+- [x] `HookPayloadFilter` implements every rule above; one test per rule (`HookPayloadFilterTests`)
+- [x] Fuzz-style test: random JSON with secret markers in every non-allowlisted field → no marker in the output (`fuzz()`)
+- [x] `WireCodec` round-trips, rejects oversize, wrong-version and unknown-event datagrams (`WireCodecTests`)
+- [x] Registered events in `Plugin/agentville/hooks/hooks.json` == `WireEvent.Kind.allCases` (`PluginManifestTests`)

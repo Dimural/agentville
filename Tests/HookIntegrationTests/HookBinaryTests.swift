@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// Runs the real `agentville-hook` binary (non-negotiable #4; docs/architecture/hook.md#tests).
 /// `scripts/test.sh` builds it first.

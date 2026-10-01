@@ -1,0 +1,43 @@
+# Milestones
+
+Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
+
+**Current milestone: M1** (data path). M0 is done apart from the owner's answers. Core, the hook, the store and the replay tool are built and tested. Remaining: the app's socket listener and the debug list window.
+
+| # | Milestone | Done when |
+|---|---|---|
+| M0 | Repo skeleton, docs, privacy promises, guards, CI | The owner agrees on the open questions marked M0 |
+| M1 | `agentville-hook`, wire codec, socket listener, session store, replay tool | Replay scenarios produce correct session states in a debug list; all hook tests pass |
+| M2 | Menu bar item + desk window (office + list); sprite renderer port | The office matches the prototype with replayed sessions, all states and monitor screens |
+| M3 | Overlay, release and recall | Pour-out and suck-back match the prototype; click-through verified over real apps; recall rules pass |
+| M4 | Roaming, meetings, particles, subagent sidekicks | All activity poses play on the desktop driven by replayed events |
+| M5 | ⌥ grab, drag, throw; hover fade; global shortcut | Grab rules pass; no permissions requested |
+| M6 | Walk-on notices, crowd and caps, staleness | 100-session and burst scenarios stay smooth; the done-announcement setting works |
+| M7 | Plugin packaging, app bundle, welcome window, Connect/Disconnect (both paths), settings | A fresh Mac goes from install to a real session's character in under a minute |
+| M8 | Signing/notarization (if chosen), cask, release checklist, multi-monitor | A public release candidate |
+
+## M0: scaffolding
+
+- [x] Docs: vision, end goals, UX, states, architecture, data contract, design, quality, process, decisions
+- [x] `AGENTS.md` / `CLAUDE.md` entry point; docs index
+- [x] Reference files gitignored; fixtures generated from the prototype
+- [x] SwiftPM package: Core, hook, replay, app targets; tests
+- [x] Guard scripts: no-network, no-disk-writes, footprint, docs links; `scripts/ci.sh`
+- [x] GitHub Actions workflow calling `scripts/ci.sh`
+- [x] Plugin + marketplace manifests (validated with `claude plugin validate`)
+- [ ] Owner answers the M0 open questions (name/licence confirmed; min macOS)
+
+## M1: data path
+
+- [x] `HookPayloadFilter` + `WireEvent` + `WireCodec` with privacy tests
+- [x] `ActivityMapping` with a table test
+- [x] Look generator with golden vectors
+- [x] `agentville-hook` executable + integration tests (exit 0, empty stdout, socket contents, timing)
+- [x] `SessionStore` with every transition, staleness and stress tests
+- [ ] `SocketListener` in the app (bind, batch, unlink on quit)
+- [x] `agentville-replay` + all scenarios in [testing-strategy.md](../quality/testing-strategy.md#replay-scenarios-m1) (scenarios are executable specs)
+- [ ] Debug list window in the app showing live store state
+
+## Later milestones
+
+Detailed checklists are written at the start of each milestone, using the per-area lists in [success-checklists.md](../quality/success-checklists.md).

@@ -34,11 +34,11 @@ You are working on **Agentville**, a native macOS menu bar app. It turns every l
 ```
 AGENTS.md / CLAUDE.md        agent entry point (you are here)
 Package.swift                one SwiftPM package; no .xcodeproj (see ADR 0004)
-Sources/AgentvilleCore/      pure, testable logic: no AppKit, no I/O beyond Foundation
-  Wire/                      hook payload → allowlisted WireEvent, socket path, codec
-  Sessions/                  tool→activity mapping, session store / state machine
+Sources/AgentvilleWire/      THE privacy boundary: hook payload → allowlisted WireEvent, codec, socket
+Sources/AgentvilleCore/      pure, testable app logic (re-exports AgentvilleWire); no AppKit
+  Sessions/                  tool→activity mapping, SessionStore state machine, Scenario parser, constants
   Looks/                     deterministic character looks (port of prototype lookFor)
-Sources/agentville-hook/     the hook helper Claude Code runs (stdin → socket, exit 0)
+Sources/agentville-hook/     the hook helper Claude Code runs (links only AgentvilleWire)
 Sources/agentville-replay/   dev tool: sends scripted events to the app socket
 Sources/Agentville/          the menu bar app (AppKit + SpriteKit)
 Tests/                       Swift Testing suites + fixtures
@@ -56,6 +56,7 @@ docs/                        all specs, decisions, checklists
 - **Test-first for Core and the hook.** Everything in `AgentvilleCore` is pure and must have tests. A bug fix starts with a failing test.
 - **Port, don't reinvent.** Sprite drawing, looks, motion constants and timings come from the prototype. Port them faithfully and cite the prototype function name in a comment (e.g. `// port of drawChar`).
 - **Constants live in one place.** Tool→activity mapping is in `Sessions/ActivityMapping.swift`. Motion and limit constants go in `Constants.swift`. Don't scatter magic numbers.
+- **Scenarios are specs.** A new session behaviour gets a `Tools/scenarios/*.jsonl` file with `expect` lines; `ScenarioTests` runs it automatically.
 - **Never add:** networking code, analytics, logging to disk, new entitlements, permission prompts, third-party art or brand marks, or dependencies without an ADR in `docs/decisions/`.
 - **Decisions.** Anything a future agent might re-litigate gets a short ADR in `docs/decisions/`. Open questions for the owner live in [docs/decisions/open-questions.md](docs/decisions/open-questions.md). Don't silently decide one: propose a default there and flag it.
 - **Done means** the relevant checklist in [docs/quality/success-checklists.md](docs/quality/success-checklists.md) is ticked, tests pass, and the guards pass.

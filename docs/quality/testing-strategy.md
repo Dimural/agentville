@@ -21,20 +21,24 @@ Purpose: how we test heavily without being able to "look" in CI, and what each l
 - **Randomness is injectable** in behaviour code (seeded RNG) so behaviour tests are reproducible.
 - **Every bug fix starts with a failing test.**
 - **Privacy tests use secret markers.** Put strings like `SECRET-PROMPT-7f3a` in every non-allowlisted field and assert that the marker never appears in the output bytes.
+- **Tests run serially** (`--no-parallel`) so the hook wall-time measurements aren't skewed by other suites hogging the CPU.
+- **Prove a test can fail.** For new guards and spec runners, break the input once on purpose and watch it go red (done for `ScenarioTests`, `check-docs`, and the guard self-tests).
 - **The hook integration tests build first.** `scripts/test.sh` builds the `agentville-hook` product before running tests; the tests locate it in `.build/<config>/`.
 - **Timing tests use generous CI factors.** The budgets in [performance-budget.md](performance-budget.md) are asserted with a 2× slack on CI and measured exactly on the owner's Mac.
 
 ## Replay scenarios (M1)
 
-| Scenario file | Covers |
+Scenario files carry `expect` lines, so they are **executable specs**: `ScenarioTests` runs every file in `Tools/scenarios/` through `WireCodec` + `SessionStore`, and checks them. See [Tools/scenarios/README.md](../../Tools/scenarios/README.md).
+
+| Scenario | Covers |
 |---|---|
 | `lifecycle.jsonl` | start → prompt → tools → permission → tools → stop → idle → end |
 | `demo-mix.jsonl` | the prototype's 5 sessions (one finishes at about 5 s, one asks for permission at about 15 s) |
-| `hundred.jsonl` (generated) | 100 sessions with a realistic mix |
-| `burst.jsonl` (generated) | 500+ events per second |
+| `--generate hundred` | 100 sessions with a realistic mix |
+| `--generate burst` | 500+ events per second (verified: 2,000/s, all delivered) |
 | `silent.jsonl` | a session goes quiet with no `SessionEnd` |
-| `long-bash.jsonl` | `PreToolUse(Bash)` then minutes of silence |
-| `malformed.jsonl` | malformed, oversized and unknown-event messages |
+| `long-bash.jsonl` | `PreToolUse(Bash)` then 20 minutes of silence |
+| `malformed.jsonl` | malformed, wrong-version, unknown-event and hostile messages |
 | `subagents.jsonl` | several subagents starting and stopping |
 
 ## Running

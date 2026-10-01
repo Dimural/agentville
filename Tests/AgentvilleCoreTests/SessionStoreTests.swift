@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// One test per transition in docs/product/sessions-and-states.md.
 @Suite("Session store")

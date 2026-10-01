@@ -2,7 +2,7 @@
 //
 // Hard rules: never write stdout, never write stderr, never exit non-zero, never wait on the app,
 // never write files. Reads stdin, keeps only allowlisted fields, sends one datagram, exits 0.
-import AgentvilleCore
+import AgentvilleWire
 import Darwin
 import Foundation
 

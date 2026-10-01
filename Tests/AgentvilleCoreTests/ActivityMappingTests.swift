@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 @Suite("Tool → activity mapping")
 struct ActivityMappingTests {

@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 @Suite("Wire codec and socket path")
 struct WireCodecTests {

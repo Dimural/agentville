@@ -83,7 +83,7 @@ Tool names come from Claude Code and change over time. **Verify** them against t
 
 ## Done when
 
-- [ ] `SessionStore` implements every transition above, each with a unit test
-- [ ] The mapping table above and `ActivityMapping.swift` match exactly (a test enumerates the table)
-- [ ] Staleness never removes a session that is mid-`PreToolUse` within its limit (test)
-- [ ] 100 sessions × 500 events/s are processed without growing memory without bound (test)
+- [x] `SessionStore` implements every transition above, each with a unit test (`SessionStoreTests`)
+- [x] The mapping table above and `ActivityMapping.swift` match exactly (`matchesDocTable()` parses this doc)
+- [x] Staleness never removes a session that is mid-`PreToolUse` within its limit (`staleness()`, `long-bash.jsonl`)
+- [x] 100 sessions × 500 events/s are processed without growing memory without bound (`SessionStoreStressTests`)

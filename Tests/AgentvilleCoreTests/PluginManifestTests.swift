@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// The plugin must register exactly the events the wire schema knows, always async and silent.
 @Suite("Plugin manifest")

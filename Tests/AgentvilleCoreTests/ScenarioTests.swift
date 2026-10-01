@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// Every file in Tools/scenarios is an executable spec: run it through SessionStore and check its
 /// `expect` lines. Raw datagrams go through WireCodec.decode, exactly like the app's socket path.

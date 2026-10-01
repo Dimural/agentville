@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import AgentvilleCore
+@testable import AgentvilleWire
 
 /// Privacy boundary tests (non-negotiable #6). Spec: docs/architecture/data-contract.md.
 @Suite("Privacy: HookPayloadFilter")

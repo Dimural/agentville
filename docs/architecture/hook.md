@@ -43,6 +43,6 @@ h="$HOME/Library/Application Support/Agentville/bin/agentville-hook"; if [ -x "$
 
 ## Done when
 
-- [ ] All tests above pass in CI
-- [ ] The release binary is < 2 MB (`scripts/check-footprint.sh`)
-- [ ] `nm`/`otool -L` of the binary shows no networking frameworks
+- [x] All tests above pass locally (`HookBinaryTests`, 2026-10-01); CI pending the first push
+- [x] The release binary is < 2 MB: 152 KB (`scripts/check-footprint.sh`, 2026-10-01)
+- [x] `otool -L` of the binary shows no networking or UI frameworks (`check-footprint.sh`)

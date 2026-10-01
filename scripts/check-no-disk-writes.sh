@@ -26,7 +26,7 @@ WRITE_PATTERNS=(
   '\bUserDefaults\b'
 )
 # Code that runs inside Claude Code's hook must be silent: no stdout/stderr output at all.
-SILENT_DIRS=(Sources/agentville-hook Sources/AgentvilleCore)
+SILENT_DIRS=(Sources/agentville-hook Sources/AgentvilleWire Sources/AgentvilleCore)
 SILENT_PATTERNS=('\bprint\(' 'FileHandle\.standardOutput' 'FileHandle\.standardError' '\bputs\(' '\bdebugPrint\(' '\bdump\(' 'STDOUT_FILENO' 'STDERR_FILENO')
 
 scan() { # $1 = root; $2 = allowlist file
