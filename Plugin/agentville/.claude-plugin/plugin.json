@@ -1,0 +1,19 @@
+{
+  "name": "agentville",
+  "displayName": "Agentville",
+  "version": "0.0.1",
+  "description": "Turns your local Claude Code sessions into a cozy pixel crew in the Agentville menu bar app. Sends only event and tool names, session ids and folder names, over a local socket. Requires the Agentville app.",
+  "author": {
+    "name": "Dimural Murat"
+  },
+  "homepage": "https://github.com/Dimural/agentville",
+  "repository": "https://github.com/Dimural/agentville",
+  "license": "MIT",
+  "keywords": [
+    "pixel",
+    "menu-bar",
+    "macos",
+    "notifications",
+    "fun"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "agentville",
+  "description": "Agentville: a cozy pixel town for your Claude Code sessions (unofficial).",
+  "owner": {
+    "name": "Dimural Murat"
+  },
+  "plugins": [
+    {
+      "name": "agentville",
+      "source": "./Plugin/agentville",
+      "description": "Forwards allowlisted session events to the local Agentville menu bar app."
+    }
+  ]
+}

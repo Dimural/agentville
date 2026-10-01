@@ -4,7 +4,7 @@ Purpose: the exact behaviour of the tiny program Claude Code runs on every hook 
 
 ## Contract
 
-1. Read stdin, up to **256 KiB** (Claude Code payloads can be large: `tool_output`, `last_assistant_message`). Anything beyond the limit is discarded and the event is dropped. stdin is always drained, so Claude Code never sees a broken pipe.
+1. Read stdin, up to **4 MiB**. Claude Code payloads can be large (`tool_output` after reading a big file, `last_assistant_message`), and a lower cap would silently lose real events (found by the integration tests). Anything beyond the limit is discarded and the event is dropped. stdin is always drained, so Claude Code never sees a broken pipe.
 2. Parse JSON. If it fails, exit 0.
 3. `HookPayloadFilter.filter` → `WireEvent?`. If nil, exit 0.
 4. Encode (≤ 1024 bytes) and `sendto` the socket with `MSG_DONTWAIT`. Ignore every error.
