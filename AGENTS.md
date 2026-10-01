@@ -26,6 +26,7 @@ You are working on **Agentville**, a native macOS menu bar app. It turns every l
 | All checks CI runs | `scripts/ci.sh` |
 | Validate the Claude Code plugin | `claude plugin validate ./Plugin/agentville` and `claude plugin validate .` |
 | Send replay scenarios to a running app | `swift run agentville-replay Tools/scenarios/<name>.jsonl` |
+| Point real Claude Code sessions at a dev hook build | `scripts/dev-link-hook.sh` (undo: `--remove`) |
 
 `scripts/swift.sh` wraps `swift`. It works with full Xcode and with the Command Line Tools alone (it adds the Swift Testing framework paths when needed). Use it rather than bare `swift test`.
 
@@ -47,6 +48,7 @@ Plugin/agentville/           the Claude Code plugin (manifest + hooks/hooks.json
 Tools/scenarios/             replay scenarios (.jsonl)
 scripts/                     build/test/guard scripts (all CI logic lives here)
 docs/                        all specs, decisions, checklists
+.claude/settings.json        project permissions for agents (repo scripts allowed; `git add -f` denied)
 ```
 
 ## 4. How to work here

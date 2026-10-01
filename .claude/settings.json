@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(scripts/test.sh:*)",
+      "Bash(scripts/ci.sh)",
+      "Bash(scripts/swift.sh:*)",
+      "Bash(scripts/check-no-network.sh:*)",
+      "Bash(scripts/check-no-disk-writes.sh:*)",
+      "Bash(scripts/check-docs.sh)",
+      "Bash(scripts/check-footprint.sh)",
+      "Bash(claude plugin validate:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ],
+    "deny": [
+      "Bash(git add -f:*)",
+      "Bash(git add --force:*)"
+    ]
+  }
+}
