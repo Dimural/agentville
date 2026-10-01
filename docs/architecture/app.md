@@ -1,0 +1,46 @@
+# The app
+
+Purpose: how `Agentville.app` is structured internally, and the performance rules every part follows.
+
+## Components
+
+| Component | Responsibility | Tech |
+|---|---|---|
+| `AppDelegate` | Lifecycle; `.accessory` activation policy (no Dock icon); owns everything below; tears down on quit | AppKit |
+| `SocketListener` | Binds the `AF_UNIX` datagram socket, reads on a background `DispatchSource`, decodes with `WireCodec`, hands events to the store on the main queue **in batches** | Darwin + Dispatch |
+| `SessionStore` (Core) | In-memory state machine ([sessions-and-states.md](../product/sessions-and-states.md)); bounded; emits change notifications | Pure Swift |
+| `StatusItemController` | Menu bar icon (pixel head, count, red dot), menu | `NSStatusItem` |
+| `DeskWindowController` | The office (12 fps pixel render), summary, session list (4 Hz), Release button | AppKit; office drawn to a `CGImage` from Core's pixel renderer |
+| `OverlayController` | One borderless, transparent, shadowless, click-through window per display; a SpriteKit scene per window; release/recall, roaming, notices, crowd, particles | AppKit + SpriteKit |
+| `InputPoller` | While the crew is out: polls modifier flags and the cursor at 30–60 Hz; toggles `ignoresMouseEvents` only when ⌥ is held *and* the cursor is over a character | AppKit |
+| `HotKey` | ⌃⌥C via Carbon `RegisterEventHotKey` (no permission needed) | Carbon |
+| `SettingsWindow`, `WelcomeWindow` | Settings, Connect/Disconnect, Diagnostics (in-memory event feed) | SwiftUI |
+
+## Rendering
+
+- Sprites are generated procedurally (a port of `drawChar` + `outline`) into a small RGBA buffer, **once per (look, pose, frame, highlight)**, and cached as `SKTexture`/`CGImage` with **nearest-neighbour** filtering.
+- Integer scales only: 3 points per pixel on the desktop (2 on small screens), 2 in the office.
+- Positions are snapped to whole points when drawn; motion runs at display rate, while sprite frames advance at pixel-art rates ([motion-and-behaviour.md](../design/motion-and-behaviour.md)).
+- Draw order: shadows → particles → sprites (sorted by y) → emotes; speech bubbles are their own layer, clamped inside the screen.
+
+## Performance rules
+
+1. **Idle means idle.** When the crew is inside and no walk-on is active, every overlay scene is **paused** (`isPaused = true`, windows ordered out) and the input poller is stopped. When the desk window is hidden, the office timer is stopped. The only remaining work is the socket's dispatch source.
+2. **Batch UI.** Socket events update the store immediately (cheap). The list and summary redraw on a **4 Hz** timer only if the store's revision changed.
+3. **Bounded everything.** ≤ 12 roamers, ≤ 3 walk-ons, ≤ 520 particles, ≤ 24 queued notices, ≤ 512 tracked sessions (oldest idle evicted first), diagnostics ring buffer ≤ 200 lines.
+4. **No per-frame allocation in hot paths.** Reuse nodes and particle structs.
+5. **Timers stop when unused.** Use display-link/SpriteKit updates only while a scene is running.
+
+## Escape hatches (must never depend on the overlay accepting input)
+
+- The status item menu is always above the overlay (overlay level is below the menu bar).
+- ⌃⌥C toggles the crew from any app.
+- Quit tears down every overlay at once; nothing survives quit.
+- Force Quit works as for any app.
+- No login item unless the user opts in.
+
+## Done when
+
+- [ ] Instruments shows ≈0% CPU with the crew inside and the window closed
+- [ ] The 100-session / burst replay scenarios meet the [performance budget](../quality/performance-budget.md)
+- [ ] Quit leaves no process, no overlay and no socket file
