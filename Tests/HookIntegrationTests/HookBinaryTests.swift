@@ -26,10 +26,13 @@ func run(_ exe: URL, args: [String] = [], stdin: Data, env: [String: String]) th
     p.environment = env
     let inPipe = Pipe(), outPipe = Pipe(), errPipe = Pipe()
     p.standardInput = inPipe; p.standardOutput = outPipe; p.standardError = errPipe
+    // A child that exits without reading stdin must not kill the test process with SIGPIPE,
+    // and the write must fail softly (FileHandle.write(_:) raises an ObjC exception on EPIPE).
+    signal(SIGPIPE, SIG_IGN)
     let t0 = Date()
     try p.run()
     // Write on a background thread so large inputs can't deadlock against a full pipe.
-    let writer = Thread { inPipe.fileHandleForWriting.write(stdin); try? inPipe.fileHandleForWriting.close() }
+    let writer = Thread { try? inPipe.fileHandleForWriting.write(contentsOf: stdin); try? inPipe.fileHandleForWriting.close() }
     writer.start()
     let out = outPipe.fileHandleForReading.readDataToEndOfFile()
     let err = errPipe.fileHandleForReading.readDataToEndOfFile()
@@ -128,24 +131,37 @@ struct HookBinaryTests {
         }
     }
 
-    @Test("Timing: p99 within budget with the app listening and absent")
+    @Test("Timing: the hook's own cost is within budget with the app listening and absent")
     func timing() throws {
         let exe = try hookBinary(), sock = SocketFixture()
-        // CI machines are noisy: assert 2× the budget there (docs/quality/testing-strategy.md).
-        let slack = ProcessInfo.processInfo.environment["CI"] == nil ? 1.0 : 2.0
+        let onCI = ProcessInfo.processInfo.environment["CI"] != nil
         let input = event("PreToolUse", ["tool_name": "Bash"])
-        func p99(_ env: [String: String]) throws -> Double {
+        func sample(_ exe: URL, _ env: [String: String]) throws -> (median: Double, p99: Double) {
             var times: [Double] = []
             for _ in 0..<120 { times.append(try run(exe, stdin: input, env: env).seconds) }
             times.sort()
-            return times[Int(Double(times.count) * 0.99) - 1]
+            return (times[times.count / 2], times[Int(Double(times.count) * 0.99) - 1])
         }
-        let listening = try p99(["AGENTVILLE_SOCKET": sock.path])
-        let absent = try p99(["AGENTVILLE_SOCKET": "/nonexistent/agentville.sock"])
+        // Baseline: spawning a do-nothing process with the same stdin. Shared CI VMs spend ~130 ms
+        // here, which is the harness, not the hook, so the budget applies to the hook's *added* cost.
+        let baseline = try sample(URL(fileURLWithPath: "/usr/bin/true"), [:])
+        let listening = try sample(exe, ["AGENTVILLE_SOCKET": sock.path])
+        let absent = try sample(exe, ["AGENTVILLE_SOCKET": "/nonexistent/agentville.sock"])
         _ = sock.drain()
-        // Measured wall time includes Process spawn overhead from the test harness itself.
-        #expect(listening < 0.050 * slack, "p99 listening = \(listening)s")
-        #expect(absent < 0.050 * slack, "p99 absent = \(absent)s")
+        let info = "baseline \(baseline), listening \(listening), absent \(absent)"
+
+        // The hook's own work (median over baseline) must be small everywhere.
+        #expect(listening.median - baseline.median < 0.020, "\(info)")
+        #expect(absent.median - baseline.median < 0.010, "\(info)")
+        // Tails: added p99 within budget; CI gets 2× slack for VM noise (docs/quality/testing-strategy.md).
+        let slack = onCI ? 2.0 : 1.0
+        #expect(listening.p99 - baseline.p99 < 0.050 * slack, "\(info)")
+        #expect(absent.p99 - baseline.p99 < 0.050 * slack, "\(info)")
+        // On a real Mac, the absolute wall time (spawn included) must meet the budget too.
+        if !onCI {
+            #expect(listening.p99 < 0.050, "\(info)")
+            #expect(absent.p99 < 0.050, "\(info)")
+        }
     }
 
     @Test("The plugin's shell command exits 0 silently when the helper is missing")

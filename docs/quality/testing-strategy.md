@@ -24,7 +24,7 @@ Purpose: how we test heavily without being able to "look" in CI, and what each l
 - **Tests run serially** (`--no-parallel`) so the hook wall-time measurements aren't skewed by other suites hogging the CPU.
 - **Prove a test can fail.** For new guards and spec runners, break the input once on purpose and watch it go red (done for `ScenarioTests`, `check-docs`, and the guard self-tests).
 - **The hook integration tests build first.** `scripts/test.sh` builds the `agentville-hook` product before running tests; the tests locate it in `.build/<config>/`.
-- **Timing tests use generous CI factors.** The budgets in [performance-budget.md](performance-budget.md) are asserted with a 2× slack on CI and measured exactly on the owner's Mac.
+- **Timing tests measure the hook's own cost.** Each run is compared against a baseline spawn of `/usr/bin/true` with the same stdin, because shared CI VMs spend about 130 ms just spawning a process (first CI run, 2026-10-01). The added cost must meet the budget everywhere (2× slack on CI for tails). On a real Mac the absolute wall time must meet it too.
 
 ## Replay scenarios (M1)
 
