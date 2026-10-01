@@ -19,6 +19,10 @@ public enum Limits {
     public static let subagentsPerSession = 32
     /// Diagnostics ring buffer (in-memory only).
     public static let diagnosticsLines = 200
+    /// Max events the socket listener hands to the store at once; the rest follow in the next batch.
+    public static let listenerBatch = 1024
+    /// Max rows the M1 debug window lists (the store itself is capped at `trackedSessions`).
+    public static let debugListRows = 200
 }
 
 public enum Timing {
@@ -26,6 +30,8 @@ public enum Timing {
     public static let listRefresh: TimeInterval = 0.25
     /// Office redraw interval (≈12 fps).
     public static let officeFrame: TimeInterval = 1.0 / 12.0
+    /// How often the app runs `SessionStore.tick` (finished → idle, staleness). Coarse on purpose.
+    public static let storeTick: TimeInterval = 5
     /// Finished → idle after this long without another event (prototype: 6 s).
     public static let finishedHold: TimeInterval = 6
     /// Proposed default for announcing "done" walk-ons (open question 1).

@@ -39,6 +39,7 @@ Sources/AgentvilleWire/      THE privacy boundary: hook payload → allowlisted 
 Sources/AgentvilleCore/      pure, testable app logic (re-exports AgentvilleWire); no AppKit
   Sessions/                  tool→activity mapping, SessionStore state machine, Scenario parser, constants
   Looks/                     deterministic character looks (port of prototype lookFor)
+  Transport/                 SocketListener: the app's receiving end of the hook socket
 Sources/agentville-hook/     the hook helper Claude Code runs (links only AgentvilleWire)
 Sources/agentville-replay/   dev tool: sends scripted events to the app socket
 Sources/Agentville/          the menu bar app (AppKit + SpriteKit)
