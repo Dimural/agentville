@@ -4,4 +4,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 scripts/swift.sh build
-scripts/swift.sh test "$@"
+# Serial: the hook timing tests measure wall time and must not compete with other suites for CPU.
+scripts/swift.sh test --no-parallel "$@"
