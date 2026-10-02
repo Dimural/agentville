@@ -8,13 +8,14 @@ import Foundation
 ///   {"at": 1.5, "event": "PreToolUse", "session": "s1", "project": "blog", "tool": "Edit"}
 ///   {"at": 2.0, "raw": "{not json"}                         // sent verbatim (malformed input)
 ///   {"at": 3.0, "expect": {"session": "s1", "status": "working:editing"}}
+///   {"at": 3.0, "expect": {"session": "s1", "status": "working:thinking", "subagents": 1}}  // optional count
 ///   {"at": 3.0, "tick": true}                                // run SessionStore.tick (tests only)
 /// Status strings: idle, needsYou, finished, error, gone, working:<activity>.
 public struct Scenario: Sendable {
     public enum Step: Sendable {
         case event(WireEvent)
         case raw(Data)
-        case expect(session: String, status: String)
+        case expect(session: String, status: String, subagents: Int?)
         case tick
     }
 
@@ -43,7 +44,7 @@ public struct Scenario: Sendable {
             if let ex = obj["expect"] as? [String: Any] {
                 guard let s = ex["session"] as? String, let st = ex["status"] as? String
                 else { throw ParseError(line: n + 1, message: "expect needs session and status") }
-                steps.append((at, .expect(session: s, status: st))); continue
+                steps.append((at, .expect(session: s, status: st, subagents: (ex["subagents"] as? NSNumber)?.intValue))); continue
             }
             var fields = obj
             fields["at"] = nil

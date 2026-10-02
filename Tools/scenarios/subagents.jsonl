@@ -4,9 +4,10 @@
 {"at": 0.6, "event": "SubagentStart", "session": "sub-1", "project": "payments", "agent_id": "a1", "agent_type": "Explore"}
 {"at": 0.7, "event": "SubagentStart", "session": "sub-1", "project": "payments", "agent_id": "a2", "agent_type": "Plan"}
 {"at": 0.8, "event": "SubagentStart", "session": "sub-1", "project": "payments", "agent_id": "a3", "agent_type": "general-purpose"}
-{"at": 0.9, "expect": {"session": "sub-1", "status": "working:thinking"}}
+{"at": 0.9, "expect": {"session": "sub-1", "status": "working:thinking", "subagents": 3}}
 {"at": 3.0, "event": "SubagentStop", "session": "sub-1", "project": "payments", "agent_id": "a2"}
 {"at": 3.5, "event": "SubagentStop", "session": "sub-1", "project": "payments", "agent_id": "nope"}
+{"at": 3.6, "expect": {"session": "sub-1", "status": "working:thinking", "subagents": 2}}
 {"at": 6.0, "event": "SubagentStop", "session": "sub-1", "project": "payments", "agent_id": "a1"}
 {"at": 7.0, "event": "SubagentStop", "session": "sub-1", "project": "payments", "agent_id": "a3"}
 {"at": 8.0, "event": "Stop", "session": "sub-1", "project": "payments"}

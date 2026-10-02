@@ -32,10 +32,14 @@ struct ScenarioTests {
                 if let decoded = WireCodec.decode(d) { store.apply(decoded, now: at) }
             case .tick:
                 store.tick(now: at)
-            case .expect(let sid, let want):
+            case .expect(let sid, let want, let subs):
                 expectations += 1
                 let got = Scenario.statusString(store.sessions[sid])
                 #expect(got == want, "\(file) @\(at)s: \(sid) is \(got), expected \(want)")
+                if let subs {
+                    let n = store.sessions[sid]?.subagents.count ?? 0
+                    #expect(n == subs, "\(file) @\(at)s: \(sid) has \(n) subagents, expected \(subs)")
+                }
             }
         }
         #expect(expectations > 0, "\(file) has no expect lines")

@@ -9,7 +9,7 @@
 {"at": 0.0, "event": "SubagentStart", "session": "demo-ml", "project": "ml-notebook", "agent_id": "sub-1", "agent_type": "Explore"}
 {"at": 0.0, "event": "UserPromptSubmit", "session": "demo-dot", "project": "dotfiles"}
 {"at": 0.0, "event": "PreToolUse", "session": "demo-dot", "project": "dotfiles", "tool": "Grep"}
-{"at": 0.1, "expect": {"session": "demo-ml", "status": "working:thinking"}}
+{"at": 0.1, "expect": {"session": "demo-ml", "status": "working:thinking", "subagents": 1}}
 {"at": 0.1, "expect": {"session": "demo-dot", "status": "working:searching"}}
 {"at": 4.0, "event": "PostToolUse", "session": "demo-api", "project": "api-server", "tool": "Edit"}
 {"at": 4.5, "event": "PreToolUse", "session": "demo-api", "project": "api-server", "tool": "Write"}
@@ -22,6 +22,7 @@
 {"at": 12.1, "expect": {"session": "demo-blog", "status": "idle"}}
 {"at": 15.0, "event": "PermissionRequest", "session": "demo-dot", "project": "dotfiles", "tool": "Bash"}
 {"at": 15.1, "expect": {"session": "demo-dot", "status": "needsYou"}}
+{"at": 17.9, "expect": {"session": "demo-ml", "status": "working:thinking", "subagents": 1}}
 {"at": 18.0, "event": "SubagentStop", "session": "demo-ml", "project": "ml-notebook", "agent_id": "sub-1", "agent_type": "Explore"}
 {"at": 31.0, "event": "PreToolUse", "session": "demo-dot", "project": "dotfiles", "tool": "Bash"}
 {"at": 31.1, "expect": {"session": "demo-dot", "status": "working:running"}}
