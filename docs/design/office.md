@@ -59,7 +59,15 @@ The frame phase is offset per desk by `i·0.3 s` so the room doesn't animate in 
 | Finished | `#0F7A43` with a white check |
 | Idle / away | `#15172C` with one bouncing coloured pixel (screensaver) |
 
+## Code
+
+`Sources/AgentvilleCore/Looks/OfficeRenderer.swift`: `OfficeScene` (desks, theme, clock, "+N more below" count) and `OfficeRenderer.render(scene, t:)`, which returns a 432×272 px `PixelCanvas`. `drawScreen` is `screenFor`. The app supplies the theme and the real time, and draws the "+N more below" badge itself.
+
+**Core activity → office.** The prototype knows six activities. Core's others fall back as follows: planning and `error` show `think`; tinkering and unknown tools show the prototype's default branch (`deskType` pose, "…" screen). This holds until open question 12's poses are drawn. The editing screen's line lengths are seeded per session from `fnv1a(session id)` (the prototype used its numeric id × 97).
+
+**Deliberate differences.** The day-sky cloud moves by fractional units, so in the prototype it is anti-aliased between pixels. The port snaps it to whole pixels (pixel art stays crisp). Golden frames use times where the two agree. Translucent fills (desk shadows, the search highlight) reproduce the browser's 8-bit blend exactly (`PixelCanvas.blend`).
+
 ## Done when
 
-- [ ] Golden-image test: the office at fixed `t` with a fixed set of sessions matches the prototype export, day and night
+- [x] Golden-image test: the office at fixed `t` with a fixed set of sessions matches the prototype export, day and night: `OfficeRendererTests` (12 whole frames: 2 scenes × day/night × 3 times, plus 10 monitor states × 24 animation steps, from `office-vectors.json`)
 - [ ] All 9 monitor screens are visible via the replay demo-mix scenario

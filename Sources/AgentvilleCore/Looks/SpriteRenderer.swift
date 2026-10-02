@@ -27,8 +27,8 @@ public enum SpriteRenderer {
     /// List avatar: this crop of `idle` frame 0 (port of `avatar`; the app draws it at 2×).
     public static let avatarCrop = (x: 5, y: 1, w: 13, h: 14)
 
-    static let eye = RGB("#1A1330")
-    static let wood = RGB("#8B5A2B"), metal = RGB("#A5ADC2")
+    static let eye = RGB(0x1A1330)
+    static let wood = RGB(0x8B5A2B), metal = RGB(0xA5ADC2)
 
     /// Port of `sprite(L, pose, f, hl)`: draw, outline, and a second highlight outline when grabbable.
     public static func render(_ L: Look, _ pose: Pose, frame: Int, highlight: Bool = false) -> PixelCanvas {
@@ -93,8 +93,8 @@ public enum SpriteRenderer {
         // long hair behind body
         if L.style == .long { R(4, 4 + dy, 3, 10, L.hairD) }
         if prop == .crt {
-            R(17, 15, 7, 8, RGB("#D9CFB8")); R(18, 16, 5, 4, RGB("#0E2A1A")); P(19, 17, RGB("#3CFF7A"))
-            R(19, 18, f != 0 ? 3 : 2, 1, RGB("#3CFF7A")); R(17, 22, 7, 1, RGB("#B3A68B"))
+            R(17, 15, 7, 8, RGB(0xD9CFB8)); R(18, 16, 5, 4, RGB(0x0E2A1A)); P(19, 17, RGB(0x3CFF7A))
+            R(19, 18, f != 0 ? 3 : 2, 1, RGB(0x3CFF7A)); R(17, 22, 7, 1, RGB(0xB3A68B))
         }
 
         // legs
@@ -160,12 +160,12 @@ public enum SpriteRenderer {
             P(12, ey, E); P(14, ey, E); P(13, ey + 1, E); P(12, ey + 2, E); P(14, ey + 2, E)
         }
         P(9, 9 + dy, L.blush); P(14, 9 + dy, L.blush)
-        if mouthOpen { R(11, 10 + dy, 2, 1, RGB("#7A1F35")) }
-        if L.acc == .shades && eyes != .x { R(9, ey, 6, 2, RGB("#1A1330")); P(10, ey, RGB("#8FD3FF")); P(13, ey, RGB("#8FD3FF")) }
-        if L.acc == .headphones { R(6, 1 + dy, 8, 1, RGB("#3A3F5C")); R(6, 5 + dy, 2, 3, RGB("#3A3F5C")); P(6, 6 + dy, L.cap) }
+        if mouthOpen { R(11, 10 + dy, 2, 1, RGB(0x7A1F35)) }
+        if L.acc == .shades && eyes != .x { R(9, ey, 6, 2, RGB(0x1A1330)); P(10, ey, RGB(0x8FD3FF)); P(13, ey, RGB(0x8FD3FF)) }
+        if L.acc == .headphones { R(6, 1 + dy, 8, 1, RGB(0x3A3F5C)); R(6, 5 + dy, 2, 3, RGB(0x3A3F5C)); P(6, 6 + dy, L.cap) }
 
         // props behind arms
-        if prop == .laptop { R(13, 21, 7, 1, metal); R(19, 15, 1, 6, RGB("#C2C8D8")); R(18, 16, 1, 4, RGB("#8FE3FF")) }
+        if prop == .laptop { R(13, 21, 7, 1, metal); R(19, 15, 1, 6, RGB(0xC2C8D8)); R(18, 16, 1, 4, RGB(0x8FE3FF)) }
 
         // arms
         switch arms {
@@ -177,9 +177,9 @@ public enum SpriteRenderer {
         case .lapA: R(5, 16, 1, 3, S2); R(14, 16, 1, 3, S1); P(15, 19, S1); P(16, 20, SK); P(18, 19, SK)
         case .lapB: R(5, 16, 1, 3, S2); R(14, 16, 1, 3, S1); P(15, 19, S1); P(16, 19, SK); P(18, 20, SK)
         case .book:
-            let page = RGB("#FFF4E6"), ink = RGB("#9A8F9F")
+            let page = RGB(0xFFF4E6), ink = RGB(0x9A8F9F)
             R(5, 13 + dy, 1, 3, S2); R(14, 13 + dy, 1, 2, S1)
-            R(13, 11 + dy, 3, 5, page); R(16, 11 + dy, 3, 5, RGB("#F0DCC4")); R(16, 11 + dy, 1, 5, RGB("#C94F4F"))
+            R(13, 11 + dy, 3, 5, page); R(16, 11 + dy, 3, 5, RGB(0xF0DCC4)); R(16, 11 + dy, 1, 5, RGB(0xC94F4F))
             if f != 0 { R(13, 13 + dy, 2, 1, ink); R(17, 13 + dy, 2, 1, ink); R(13, 15 + dy, 2, 1, ink); R(16, 10 + dy, 2, 1, page) }
             else { R(13, 12 + dy, 2, 1, ink); R(17, 12 + dy, 2, 1, ink); R(13, 14 + dy, 2, 1, ink); R(17, 14 + dy, 2, 1, ink) }
             P(13, 16 + dy, SK); P(18, 16 + dy, SK)
@@ -190,17 +190,17 @@ public enum SpriteRenderer {
             R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); R(14, 13 + dy, 3, 1, S1); P(17, 13 + dy, SK)
             R(18, 13 + dy, 2, 1, wood); R(20, 12 + dy, 2, 3, metal)
         case .magnifier:
-            let rim = RGB("#6E7690")
+            let rim = RGB(0x6E7690)
             R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); R(14, 12 + dy, 1, 2, S1); P(15, 11 + dy, S1); P(16, 10 + dy, SK); P(17, 9 + dy, wood)
             R(18, 5 + dy, 3, 1, rim); R(18, 9 + dy, 3, 1, rim); R(17, 6 + dy, 1, 3, rim); R(21, 6 + dy, 1, 3, rim)
-            R(18, 6 + dy, 3, 3, RGB("#BFE9FF")); P(18, 6 + dy, RGB("#FFFFFF"))
+            R(18, 6 + dy, 3, 3, RGB(0xBFE9FF)); P(18, 6 + dy, RGB(0xFFFFFF))
         case .telescope:
             R(5, 13 + dy, 1, 3, S2); R(14, 11 + dy, 1, 2, S1); P(15, 10 + dy, SK)
             for i in 0..<9 {
                 // JS Math.round(i * .6); no value here sits exactly on .5, so .rounded() agrees.
-                R(14 + i, 7 + dy - Int((Double(i) * 0.6).rounded()), 1, 2, i < 3 ? RGB("#6B4A2B") : RGB("#D4A24C"))
+                R(14 + i, 7 + dy - Int((Double(i) * 0.6).rounded()), 1, 2, i < 3 ? RGB(0x6B4A2B) : RGB(0xD4A24C))
             }
-            R(22, 1 + dy, 1, 3, RGB("#8FD3FF")); P(18, 7 + dy, SK)
+            R(22, 1 + dy, 1, 3, RGB(0x8FD3FF)); P(18, 7 + dy, SK)
         case .chin: R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); R(14, 12 + dy, 1, 3, S1); P(14, 11 + dy, SK)
         case .waveA: R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); P(14, 12 + dy, S1); R(15, 8 + dy, 1, 4, S1); P(15, 7 + dy, SK)
         case .waveB:
@@ -209,8 +209,8 @@ public enum SpriteRenderer {
         case .upMid: R(4, 10 + dy, 1, 3, S2); P(3, 9 + dy, SK); R(15, 10 + dy, 1, 3, S1); P(16, 9 + dy, SK)
         case .mug:
             R(5, 16, 1, 3, S2); R(14, 16, 1, 2, S1); P(15, 17, SK)
-            R(15, 14, 3, 3, RGB("#F4F0E8")); R(15, 14, 3, 1, RGB("#6B3B24")); P(18, 15, RGB("#F4F0E8"))
-        case .sip: R(5, 16, 1, 3, S2); R(14, 15, 1, 2, S1); P(14, 14, SK); R(13, 11, 3, 3, RGB("#F4F0E8")); P(16, 12, RGB("#F4F0E8"))
+            R(15, 14, 3, 3, RGB(0xF4F0E8)); R(15, 14, 3, 1, RGB(0x6B3B24)); P(18, 15, RGB(0xF4F0E8))
+        case .sip: R(5, 16, 1, 3, S2); R(14, 15, 1, 2, S1); P(14, 14, SK); R(13, 11, 3, 3, RGB(0xF4F0E8)); P(16, 12, RGB(0xF4F0E8))
         case .rest: R(5, 13 + dy, 1, 3, S2); P(5, 16 + dy, SK); R(14, 13 + dy, 1, 3, S1); P(14, 16 + dy, SK)
         }
     }
@@ -219,20 +219,20 @@ public enum SpriteRenderer {
 
     /// Port of `ICON`: 5×5 patterns and their colours.
     static let icons: [Emote.Icon: (color: RGB, pattern: [String])] = [
-        .bang: (RGB("#E0103F"), ["..#..", "..#..", "..#..", ".....", "..#.."]),
-        .check: (RGB("#0B9A4B"), ["....#", "...##", "#.##.", "###..", ".#..."]),
-        .heart: (RGB("#FF3F7F"), [".#.#.", "#####", "#####", ".###.", "..#.."]),
-        .quest: (RGB("#2B7BD6"), [".###.", "....#", "..##.", ".....", "..#.."]),
+        .bang: (RGB(0xE0103F), ["..#..", "..#..", "..#..", ".....", "..#.."]),
+        .check: (RGB(0x0B9A4B), ["....#", "...##", "#.##.", "###..", ".#..."]),
+        .heart: (RGB(0xFF3F7F), [".#.#.", "#####", "#####", ".###.", "..#.."]),
+        .quest: (RGB(0x2B7BD6), [".###.", "....#", "..##.", ".....", "..#.."]),
     ]
 
     /// Port of `drawEmote` at scale 1: a 9×10 bubble (9×9 plus a 1 px tail). The app scales it up.
     public static func emote(_ kind: Emote) -> PixelCanvas {
         var c = PixelCanvas(width: 9, height: 10)
         c.fill(1, 0, 7, 9, Palette.outline); c.fill(0, 1, 9, 7, Palette.outline); c.fill(4, 9, 1, 1, Palette.outline)
-        c.fill(1, 1, 7, 7, RGB("#FFF8EC"))
+        c.fill(1, 1, 7, 7, RGB(0xFFF8EC))
         switch kind {
         case .dots(let n):
-            for i in 0..<max(0, min(3, n)) { c.fill(2 + i * 2, 4, 1, 1, RGB("#5B5578")) }
+            for i in 0..<max(0, min(3, n)) { c.fill(2 + i * 2, 4, 1, 1, RGB(0x5B5578)) }
         case .icon(let icon):
             let (color, pattern) = icons[icon]!
             for (r, row) in pattern.enumerated() {

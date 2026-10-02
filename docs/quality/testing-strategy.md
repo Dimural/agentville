@@ -7,7 +7,7 @@ Purpose: how we test heavily without being able to "look" in CI, and what each l
 | Layer | Where | Runs in CI | What it proves |
 |---|---|---|---|
 | **Unit (Core)** | `Tests/AgentvilleCoreTests` | Yes | Filter, codec, mapping, store transitions, staleness, looks, caps, all pure and deterministic |
-| **Golden** | `Tests/AgentvilleCoreTests/Fixtures` | Yes | Ports match the prototype exactly (`look-vectors.json`; `sprite-vectors.json`: every pose/frame for 19 looks plus emotes, as palette-indexed text rows; office frames later in M2) |
+| **Golden** | `Tests/AgentvilleCoreTests/Fixtures` | Yes | Ports match the prototype exactly (`look-vectors.json`; `sprite-vectors.json`: every pose/frame for 19 looks plus emotes, as palette-indexed text rows; `office-vectors.json`: whole office frames and every monitor screen) |
 | **Stress** | `SessionStoreStressTests` | Yes | 100 sessions × thousands of events: bounded memory, time per batch |
 | **Hook integration** | `Tests/HookIntegrationTests` | Yes | Spawns the real built `agentville-hook` binary: exit codes, stdout, socket contents, timing |
 | **Static guards** | `scripts/check-*.sh` | Yes | No networking APIs, no stray disk writes, binary sizes, doc links |

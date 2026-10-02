@@ -45,8 +45,8 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] Sprite renderer port (`drawChar`, `sprite`, `outline`, `avatar`, `drawEmote`) with golden frames exported from the prototype: `SpriteRendererTests`
 - [x] Bounded sprite cache (`SpriteCache`, LRU 2,000)
 - [ ] `PixelCanvas` → `CGImage` in the app, nearest-neighbour, integer scales
-- [ ] Office renderer port (`drawOffice`, `screenFor`, `deskUnits`): day/night, 6 desks, 9 monitor screens, "+N more below"; golden office frames
-- [ ] Desk window: office (≈12 fps, stops when hidden) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list
+- [x] Office renderer port (`drawOffice`, `screenFor`, `deskUnits`): day/night, 6 desks, every monitor screen, "+N more below" count; golden office frames: `OfficeRendererTests`. About 2 ms per frame in a debug build
+- [ ] Desk window: office (≈12 fps, stops when hidden; "+N more below" badge) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list
 - [ ] Status item: pixel head, count, red dot when anything needs you
 - [ ] Owner's side-by-side review against the prototype with replayed sessions
 

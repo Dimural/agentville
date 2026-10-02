@@ -13,6 +13,11 @@ public struct RGB: Equatable, Hashable, Sendable, CustomStringConvertible {
         self.init(r: UInt8(n >> 16), g: UInt8((n >> 8) & 255), b: UInt8(n & 255))
     }
 
+    /// From a 0xRRGGBB literal (cheap; used in hot drawing code instead of parsing strings).
+    @inline(__always) public init(_ hex: UInt32) {
+        self.init(r: UInt8(hex >> 16 & 0xFF), g: UInt8(hex >> 8 & 0xFF), b: UInt8(hex & 0xFF))
+    }
+
     /// Lower-case `#rrggbb`, matching the prototype's `toHex`.
     public var hex: String { String(format: "#%02x%02x%02x", r, g, b) }
     public var description: String { hex }
