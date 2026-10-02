@@ -6,25 +6,14 @@
 // Never edit the fixture by hand (docs/reference/README.md#how-to-regenerate-fixtures-from-the-prototype).
 //
 // Usage: node Tools/fixtures/export-sprites.mjs ["Pixel Crew.html"] [--chrome /path/to/chrome]
-import { spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { cli, PAGE_HELPERS, repo, runInChrome, section } from './lib.mjs';
 
-const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const args = process.argv.slice(2);
-const chromeAt = args.indexOf('--chrome');
-const chrome = chromeAt >= 0 ? args.splice(chromeAt, 2)[1] : '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const protoPath = resolve(args[0] ?? join(repo, 'Pixel Crew.html'));
+const { chrome, html } = cli();
 const outPath = join(repo, 'Tests/AgentvilleCoreTests/Fixtures/sprite-vectors.json');
-
-// The prototype's utils, palettes, looks, sprites and emotes: everything between these two markers.
-const html = readFileSync(protoPath, 'utf8');
-const start = html.indexOf('/* ---------- utils ---------- */');
-const end = html.indexOf('/* ---------- world state ---------- */');
-if (start < 0 || end < 0 || end < start) throw new Error('prototype markers not found; has Pixel Crew.html changed?');
-const protoCode = html.slice(start, end);
+// The prototype's utils, palettes, looks, sprites and emotes.
+const protoCode = section(html, '/* ---------- utils ---------- */', '/* ---------- world state ---------- */');
 
 // Runs inside the page, after the prototype code, in the same scope.
 const harness = `
@@ -42,25 +31,6 @@ for (const name of candidates){
 const names = [...chosen.values()];
 for (const p of ['plain','stripe','pocket','hood'])
   if (!names.some(n => lookFor(n).pattern === p)) throw new Error('no look with pattern ' + p);
-
-const CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-function encode(canvas, pal){
-  const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data, rows = [];
-  for (let y = 0; y < canvas.height; y++){
-    let row = '';
-    for (let x = 0; x < canvas.width; x++){
-      const i = (y*canvas.width + x) * 4;
-      if (d[i+3] === 0){ row += '.'; continue; }
-      if (d[i+3] !== 255) throw new Error('partially transparent pixel');
-      const hex = toHex(d[i], d[i+1], d[i+2]);
-      if (!pal.has(hex)){ if (pal.size >= CHARS.length) throw new Error('palette overflow'); pal.set(hex, CHARS[pal.size]); }
-      row += pal.get(hex);
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-const palObj = pal => Object.fromEntries([...pal].map(([hex, ch]) => [ch, hex]));
 
 const looksOut = [];
 for (const name of names){
@@ -83,7 +53,7 @@ for (const [kind, t] of [['bang',0],['check',0],['heart',0],['quest',0],['dots',
 
 const out = { generatedFrom: 'prototype lookFor/sprite/drawChar/outline/drawEmote on a headless Chrome canvas (Tools/fixtures/export-sprites.mjs)',
               poses: POSES, looks: looksOut, emotes: { palette: palObj(epal), items: emotes } };
-document.getElementById('out').textContent = btoa(JSON.stringify(out));
+emit(out);
 `;
 
 const page = `<!doctype html><meta charset="utf-8"><pre id="out">FAILED</pre>
@@ -95,31 +65,8 @@ ${harness}
 })();
 </script>`;
 
-// Headless Chrome prints the DOM promptly but can linger afterwards (updater, crashpad), so stop it
-// as soon as the document is complete. Fail after 60 s.
-function dumpDom(file, profile){
-  return new Promise((ok, fail) => {
-    const p = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-                             `--user-data-dir=${profile}`, '--dump-dom', `file://${file}`], { stdio: ['ignore', 'pipe', 'ignore'] });
-    let out = '';
-    const done = (err) => { clearTimeout(timer); p.kill('SIGKILL'); err ? fail(err) : ok(out); };
-    const timer = setTimeout(() => done(new Error('headless Chrome timed out')), 60000);
-    p.stdout.setEncoding('utf8');
-    p.stdout.on('data', d => { out += d; if (out.includes('</html>')) done(); });
-    p.on('error', done);
-    p.on('exit', () => out.includes('</html>') ? done() : done(new Error('Chrome exited without output')));
-  });
-}
-
-const dir = mkdtempSync(join(tmpdir(), 'agentville-fixtures-'));
-try {
-  const file = join(dir, 'harness.html');
-  writeFileSync(file, page);
-  const dom = await dumpDom(file, join(dir, 'profile'));
-  const m = dom.match(/<pre id="out">([^<]*)<\/pre>/);
-  if (!m || !/^[A-Za-z0-9+/=]+$/.test(m[1])) throw new Error('harness failed: ' + (m ? m[1].slice(0, 300) : dom.slice(0, 300)));
-  const data = JSON.parse(Buffer.from(m[1], 'base64').toString('utf8'));
-
+const data = await runInChrome(chrome, protoCode + PAGE_HELPERS + harness);
+{
   // One sprite per line, rows inline: compact, and each frame still diffs as ASCII art.
   const lines = ['{', `  "generatedFrom": ${JSON.stringify(data.generatedFrom)},`, `  "poses": ${JSON.stringify(data.poses)},`, '  "looks": ['];
   data.looks.forEach((L, li) => {
@@ -134,6 +81,4 @@ try {
   writeFileSync(outPath, lines.join('\n'));
   const n = data.looks.reduce((a, L) => a + L.sprites.length, 0);
   console.log(`wrote ${outPath}: ${data.looks.length} looks, ${n} sprites, ${data.emotes.items.length} emotes`);
-} finally {
-  rmSync(dir, { recursive: true, force: true });
 }
