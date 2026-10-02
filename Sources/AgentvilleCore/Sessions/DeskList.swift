@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the desk window's list, summary line and menu bar header say. Port of the prototype's
+/// What the desk panel's list, summary line and menu bar header say. Port of the prototype's
 /// `fmtDur`, `statusLabel` and `renderList` (docs/product/user-experience.md#desk-window-the-office).
 /// Pure, so the app only lays it out.
 public enum DeskList {

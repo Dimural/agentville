@@ -85,7 +85,7 @@ Purpose: every number that shapes how the crew moves and behaves, copied from th
 ## Hover and accessibility
 
 - Hover fade: target alpha **0.16** when the cursor is within the hit box + 6 pt (and not in grab mode); eased at `min(1, dt·14)`.
-- **Reduced motion:** confetti cut to a quarter; skip the window burp/gulp and the button's invite bounce.
+- **Reduced motion:** confetti cut to a quarter; skip the desk panel burp/gulp and the button's invite bounce.
 
 ## Window animations
 

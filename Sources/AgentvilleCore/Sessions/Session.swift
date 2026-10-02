@@ -8,7 +8,7 @@ public enum SessionStatus: Equatable, Sendable {
     case finished
     case error
 
-    /// Status chip label for the desk window list.
+    /// Status chip label for the desk panel list.
     public var label: String {
         switch self {
         case .idle: "Idle"

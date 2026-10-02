@@ -14,6 +14,7 @@ Statuses: **Accepted** (in force), **Proposed** (default in use, awaiting the ow
 | [0006](0006-reference-files-local-only.md) | Prototype and brief stay local, never committed | Accepted |
 | [0007](0007-hook-location.md) | Helper symlink in Application Support + silent shell-form hook | Proposed |
 | [0008](0008-swift-testing.md) | Swift Testing for all tests | Accepted |
+| [0009](0009-desk-panel-dropdown.md) | The desk is a dropdown panel under the menu bar icon | Accepted |
 
 Owner-facing questions that aren't decided yet: [open-questions.md](open-questions.md).
 

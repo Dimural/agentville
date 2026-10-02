@@ -1,4 +1,4 @@
-# The office (desk window)
+# The office (desk panel)
 
 Purpose: the exact pixel room to port from `drawOffice`, `screenFor` and `deskUnits`.
 

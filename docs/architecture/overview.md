@@ -10,7 +10,7 @@ Purpose: the four parts of Agentville, how data flows between them, and why it's
  │                      │ agentville-   │  (AF_UNIX dgram)  (state machine)             │
  │ plugin hooks,        │ hook          │                        │                      │
  │ async: true          │ (allowlist,   │                        ▼                      │
- └──────────────────────┘  send, exit 0)│  Desk window (office + list)                  │
+ └──────────────────────┘  send, exit 0)│  Desk panel (office + list)                   │
                     one datagram ─────▶ │  Overlay windows (one per display, click-thru)│
                     over a local        │  Status item (menu bar)                       │
                     Unix socket only    └───────────────────────────────────────────────┘
@@ -22,7 +22,7 @@ Purpose: the four parts of Agentville, how data flows between them, and why it's
 |---|---|---|
 | **Hook helper** `agentville-hook` | `Sources/agentville-hook/` + `AgentvilleCore/Wire/` | Claude Code runs it on each hook event. Reads stdin JSON, keeps **only allowlisted fields** ([data-contract.md](data-contract.md)), sends one datagram to the app's socket, exits 0. Silent and instant if the app is absent. Details: [hook.md](hook.md). |
 | **Plugin** | `Plugin/agentville/` + `.claude-plugin/marketplace.json` | Registers the hook for the events we need, with `"async": true`. This repo doubles as the marketplace. |
-| **App** | `Sources/Agentville/` + `AgentvilleCore/Sessions/`, `Looks/` | Native Swift menu bar app: socket listener, in-memory session store, desk window, overlay, status item. Details: [app.md](app.md). |
+| **App** | `Sources/Agentville/` + `AgentvilleCore/Sessions/`, `Looks/` | Native Swift menu bar app: socket listener, in-memory session store, desk panel, overlay, status item. Details: [app.md](app.md). |
 | **Installer flow** | App welcome window + Homebrew cask | Connect / Disconnect (plugin path or settings-file path). Details: [installation.md](installation.md). |
 
 Plus a dev-only fifth part: **`agentville-replay`** sends scripted `WireEvent`s to the socket, standing in for the prototype's simulator.
@@ -32,7 +32,7 @@ Plus a dev-only fifth part: **`agentville-replay`** sends scripted `WireEvent`s 
 ```
 AgentvilleWire   (Foundation/Darwin only) HookPayloadFilter, Sanitize, WireEvent, WireCodec, SocketPath, DatagramSocket
 AgentvilleCore   (no AppKit, no global state, 100% unit-testable; re-exports AgentvilleWire; CoreGraphics only for PixelImage)
-   ├── Sessions   ActivityMapping, SessionStore, Session, StoreEffect, Scenario, Constants
+   ├── Sessions   ActivityMapping, SessionStore, Session, StoreEffect, Scenario, Constants, DeskList, PanelPlacement
    ├── Looks      LookHash (hash + rng), RGB, Palette, Look, LookGenerator, PixelCanvas, PixelImage, SpriteRenderer, SpriteCache, OfficeRenderer
    └── Transport  SocketListener (the app's receiving end: bind, drain, decode, batch, clean unlink)
 agentville-hook  → AgentvilleWire only. Tiny (≈150 KB); must start fast.

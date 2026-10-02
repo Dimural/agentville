@@ -15,16 +15,18 @@ Purpose: everything the user sees and does, in order. The prototype is the refer
 
 ## Menu bar item
 
-It shows a pixel head, the active session count, and a red dot when any session needs the user. Its menu:
+It shows a pixel head, the active session count, and a red dot when any session needs the user. **Left click** drops the desk panel down below it ([0009](../decisions/0009-desk-panel-dropdown.md)). **Right click** (or ⌃-click, or the panel's "⋯" button) opens its menu:
 
-- **Show / Hide window**
+- **Keep Panel Open** (the panel's pin)
 - **Release the crew / Call the crew back** (⌃⌥C)
 - **Settings…**
 - **Quit Agentville** (⌘Q)
 
 The menu header shows "N sessions".
 
-## Desk window (the office)
+## Desk panel (the office)
+
+A dropdown under the menu bar icon, like Wi-Fi or Control Center: rounded, no title bar. It folds away when you click the icon again, click anywhere else, or press Esc. Pinned (the footer's pin, or *Keep Panel Open*), it stays open and can be dragged anywhere.
 
 **Top: the pixel office** ([office.md](../design/office.md)). It has 6 desks in 2 rows of 3. Each desk's character acts out its session, and its monitor shows a matching animated screen. When there are more sessions than desks, a **"+N more below"** badge appears.
 
@@ -39,7 +41,7 @@ The menu header shows "N sessions".
 
 Code: `DeskList` (Core) produces each row, the summary line and the menu header; `DeskListTests`.
 
-**Footer:** the chunky **Release the crew** button (orange, with a gentle "invite" bounce until first use). Once released it turns blue and reads **Call the crew back**. Next to it is a `⌃⌥C toggles` hint.
+**Footer:** a pin and a "⋯" (more) button on the right. From M3, the chunky **Release the crew** button (orange, with a gentle "invite" bounce until first use). Once released it turns blue and reads **Call the crew back**. Next to it is a `⌃⌥C toggles` hint.
 
 The list re-renders **at most 4× per second**, however many events arrive.
 
@@ -62,7 +64,7 @@ At most **3 walk-ons at once** (2 on screens narrower than 900 pt, 1 below 560 p
 
 Triggered by the button, the menu item or ⌃⌥C:
 
-1. The window **burps**: squash-and-stretch plus a burst of sparkles.
+1. The desk panel **burps** (when open): squash-and-stretch plus a burst of sparkles.
 2. One by one (first at 120 ms, then 85 ms apart), each character **leaps out of its desk** in an arc, stretched in flight with a sparkle trail.
 3. Each **lands** at a random spot with a squash and a dust puff. About 35% shout "Wheee!", "Freedom!", "Hi!", "Let's go!" or "Stretch time".
 4. On the desktop, each acts out its real session:
@@ -89,9 +91,9 @@ Triggered by the button, the menu item or ⌃⌥C:
 Triggered by the same button (now **Call the crew back**), the menu or ⌃⌥C:
 
 1. Each character pops a `!`, about 30% say "Coming!", "Okay!", "Back to work!" or "On my way", then dangles through an arc back to its desk, shrinking to desk scale on the way.
-2. The window **gulps**.
+2. The desk panel **gulps** (when open).
 3. Everything is back or removed **within 2.6 s, no matter what**.
-4. If the window is hidden, characters fly into the **menu bar icon** instead.
+4. If the panel is closed, characters fly into the **menu bar icon** instead.
 
 ## Grabbing
 

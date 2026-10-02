@@ -19,7 +19,7 @@ Everything about what Agentville is, how it works and how we know it's good live
 | The plugin, installing, Connect/Disconnect | [architecture/installation.md](architecture/installation.md), [decisions/0007-hook-location.md](decisions/0007-hook-location.md) |
 | Session states and the store | [product/sessions-and-states.md](product/sessions-and-states.md), [architecture/app.md](architecture/app.md) |
 | Sprites, looks, poses | [design/art-direction.md](design/art-direction.md), [design/sprites-and-poses.md](design/sprites-and-poses.md) |
-| The office (desk window) | [design/office.md](design/office.md) |
+| The office (desk panel) | [design/office.md](design/office.md) |
 | The overlay, release/recall, roaming, grabbing | [design/motion-and-behaviour.md](design/motion-and-behaviour.md), [architecture/input-and-safety.md](architecture/input-and-safety.md) |
 | Performance, memory, CPU, size | [quality/performance-budget.md](quality/performance-budget.md) |
 | Tests | [quality/testing-strategy.md](quality/testing-strategy.md) |

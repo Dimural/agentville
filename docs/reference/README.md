@@ -18,14 +18,14 @@ Everything is in one `<script>` block. Search for these names:
 | Looks | `lookFor`, `hash`, `rng`, `SKIN` `HAIR` `SHIRT` `PANTS` `SHOES` `STYLES` `ACCS`, `shade`, `mix` | `Sources/AgentvilleCore/Looks/` (ported, golden-tested) |
 | Sprites | `drawChar(g, L, pose, f)`, `sprite()`, `outline()`, `avatar()` | `Looks/SpriteRenderer.swift`, `PixelCanvas.swift` (ported, golden-tested) |
 | Emotes | `ICON`, `drawPattern`, `drawEmote` | `SpriteRenderer.emote` (ported, golden-tested) |
-| Office | `drawOffice`, `screenFor`, `deskUnits`, `DESKS` | `Looks/OfficeRenderer.swift` (ported, golden-tested); shown by the app desk window (M2) |
+| Office | `drawOffice`, `screenFor`, `deskUnits`, `DESKS` | `Looks/OfficeRenderer.swift` (ported, golden-tested); shown by the app desk panel (M2) |
 | Behaviour | `class Ent`, `updateEnt`, `roam`, `roamCrowd`, `checkMeetings`, `settle` | app overlay (M4) |
 | Release / recall | `release`, `recall`, `spawnFromHome`, `sendHome`, `homePos`, `callEveryoneBack` | app overlay (M3) |
 | Notices | `onDone`, `onWaiting`, `queueNotice`, `processNotices`, `slotsMax` | app overlay (M6) |
 | Crowd | `roamers`, `crowdMembers`, `spawnCrowd`, `syncRoamers` | app overlay (M6) |
 | Grab / throw | `grabMode`, `hitTest`, `hitBox`, stage `pointerdown` capture, `endDrag` | app input (M5) |
 | Particles | `confetti`, `dust`, `sparkle`, `zzz`, `bits`, `stepParts`, `drawParts` | app overlay (M4) |
-| Batched UI | `renderList` + the 0.25 s accumulator in `frame` | app desk window (M2) |
+| Batched UI | `renderList` + the 0.25 s accumulator in `frame` | app desk panel (M2) |
 
 ## Scaffolding that is NOT rebuilt
 

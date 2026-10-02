@@ -50,7 +50,7 @@ Purpose: concrete, tickable definitions of success for the whole platform and ea
 - [x] Every pose/frame renders pixel-identical to prototype exports: `SpriteRendererTests` (19 looks: every style × accessory, all 4 patterns; 741 frames + 8 emotes from `sprite-vectors.json`)
 - [ ] Nearest-neighbour everywhere; integer scales only
 
-## Menu bar and desk window
+## Menu bar and desk panel
 
 - [ ] Icon shows the count and a red dot when anything needs you
 - [ ] The office matches the prototype (day and night), all 9 monitor screens

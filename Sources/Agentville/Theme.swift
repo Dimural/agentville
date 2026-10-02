@@ -1,4 +1,4 @@
-// Colours and fonts for the desk window and menu bar, copied from the prototype's CSS tokens
+// Colours and fonts for the desk panel and menu bar, copied from the prototype's CSS tokens
 // (`--win`, `--win-ink`, `--warn`, … light and dark). The prototype wins on look (AGENTS.md).
 import AgentvilleCore
 import AppKit

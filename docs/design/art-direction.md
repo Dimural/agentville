@@ -27,7 +27,7 @@ Cozy and chunky. Big-headed pixel characters, outlined in deep purple-black **`#
 
 Character palettes (skin, hair, shirt, pants, shoes) are listed in [sprites-and-poses.md](sprites-and-poses.md#looks).
 
-## Typography (desk window and bubbles)
+## Typography (desk panel and bubbles)
 
 - Display and bubbles: a pixel font in the spirit of the prototype's *Pixelify Sans*. **Bundle an OFL-licensed pixel font** in the app; never fetch fonts from the network.
 - Body: the system font (SF Pro). Mono details (tool names, durations): SF Mono with tabular numerals.

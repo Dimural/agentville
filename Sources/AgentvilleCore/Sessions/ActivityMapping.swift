@@ -2,7 +2,7 @@
 public enum Activity: String, CaseIterable, Sendable {
     case thinking, editing, reading, running, searching, web, planning, tinkering, working
 
-    /// Status chip label in the desk window list.
+    /// Status chip label in the desk panel list.
     public var label: String {
         switch self {
         case .thinking: "Thinking"

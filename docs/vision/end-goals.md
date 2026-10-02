@@ -22,7 +22,7 @@ A developer on a fresh Mac runs one Homebrew command, clicks **Connect to Claude
 | Needs-you latency | `PermissionRequest` fires → walk-on starts | < 1 s |
 | Hook cost | Hook wall time with the app running / absent | p99 < 50 ms / < 10 ms |
 | Recall | Call-back from any state → every character home or removed | ≤ 2.6 s (hard limit 3 s) |
-| Idle cost | CPU with the crew inside and the window closed | ≈ 0% (< 0.5% averaged over 60 s) |
+| Idle cost | CPU with the crew inside and the desk panel closed | ≈ 0% (< 0.5% averaged over 60 s) |
 | Busy cost | CPU with 12 roaming plus a crowd, at 100 sessions | < 15% of one core on Apple Silicon |
 | Memory | Resident memory, 100 sessions, crew released | < 150 MB |
 | Size | App bundle / hook binary | < 15 MB / < 2 MB |

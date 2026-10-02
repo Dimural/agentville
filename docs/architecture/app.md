@@ -9,8 +9,8 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 | `AppDelegate` | Lifecycle; `.accessory` activation policy (no Dock icon); owns everything below; tears down on quit | AppKit |
 | `SocketListener` (Core, `Transport/`) | Binds the `AF_UNIX` datagram socket (mode 600), drains it on a background `DispatchSource` with one reused buffer, decodes with `WireCodec`, and hands events to the store on the main queue **in batches** of at most `Limits.listenerBatch`. Counts dropped (undecodable) datagrams for diagnostics. `stop()` removes the socket file only if it is still the one this listener bound. Lives in Core so it's tested on a real socket (`SocketListenerTests`) | Darwin + Dispatch |
 | `SessionStore` (Core) | In-memory state machine ([sessions-and-states.md](../product/sessions-and-states.md)); bounded; emits change notifications | Pure Swift |
-| `StatusItemController` | Menu bar icon: `MenuBarIcon.head` as a 9×9 template image at 2 pt per pixel (exact 1× and 2× bitmaps), the session count in mono digits, and a 7×7 warn-coloured dot over the head's top-right while anything needs you. Menu: header ("Agentville  N sessions"), Show/Hide Window, Quit. Release (M3) and Settings (M7) join later | `NSStatusItem` |
-| `DeskWindowController` | The office (`OfficeRenderer` → `PixelImage` at ≈12 fps, `Timing.officeFrame`; "+N more below" and twin badges drawn over it), the summary line and the session list (`DeskList` rows, view-based table, ≤ 4 Hz). Both timers run only while the window is visible, not miniaturised and not occluded. Colours are the prototype's `--win*` tokens (`Theme`). The Release button arrives with M3. `Agentville --show-window` opens it at launch (for side-by-side reviews) | AppKit; office drawn to a `CGImage` from Core's pixel renderer |
+| `StatusItemController` | Menu bar icon: `MenuBarIcon.head` as a 9×9 template image at 2 pt per pixel (exact 1× and 2× bitmaps), the session count in mono digits, and a 7×7 warn-coloured dot over the head's top-right while anything needs you. Left click toggles the desk panel (pressed look while it's open); right click or ⌃-click shows the menu: header ("Agentville  N sessions"), Keep Panel Open, Quit. Release (M3) and Settings (M7) join later | `NSStatusItem` |
+| `DeskPanelController` | The desk as a dropdown panel under the icon ([0009](../decisions/0009-desk-panel-dropdown.md)): borderless non-activating `NSPanel`, placed by `PanelPlacement` (Core); closes on icon click, outside click (global mouse monitor, only while open and unpinned) or Esc; pinnable and draggable. Inside: the office (`OfficeRenderer` → `PixelImage` at ≈12 fps, `Timing.officeFrame`; "+N more below" and twin badges drawn over it), the summary line, the session list (`DeskList` rows, view-based table, ≤ 4 Hz) and a footer (pin, "⋯"). Both timers run only while the panel is visible and not covered. Colours are the prototype's `--win*` tokens (`Theme`). The Release button arrives with M3. `Agentville --show-desk` opens it pinned (for side-by-side reviews) | AppKit; office drawn to a `CGImage` from Core's pixel renderer |
 | `OverlayController` | One borderless, transparent, shadowless, click-through window per display; a SpriteKit scene per window; release/recall, roaming, notices, crowd, particles | AppKit + SpriteKit |
 | `InputPoller` | While the crew is out: polls modifier flags and the cursor at 30–60 Hz; toggles `ignoresMouseEvents` only when ⌥ is held *and* the cursor is over a character | AppKit |
 | `HotKey` | ⌃⌥C via Carbon `RegisterEventHotKey` (no permission needed) | Carbon |
@@ -26,7 +26,7 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 
 ## Performance rules
 
-1. **Idle means idle.** When the crew is inside and no walk-on is active, every overlay scene is **paused** (`isPaused = true`, windows ordered out) and the input poller is stopped. When the desk window is hidden, the office timer is stopped. The only remaining work is the socket's dispatch source.
+1. **Idle means idle.** When the crew is inside and no walk-on is active, every overlay scene is **paused** (`isPaused = true`, windows ordered out) and the input poller is stopped. When the desk panel is closed, the office timer is stopped. The only remaining work is the socket's dispatch source.
 2. **Batch UI.** Socket events update the store immediately (cheap). The list and summary redraw on a **4 Hz** timer only if the store's revision changed. The status item coalesces updates the same way: the first batch schedules one redraw 0.25 s later, so a storm costs at most 4 redraws a second and a quiet app schedules none.
 3. **Bounded everything.** ≤ 12 roamers, ≤ 3 walk-ons, ≤ 520 particles, ≤ 24 queued notices, ≤ 512 tracked sessions (oldest idle evicted first), diagnostics ring buffer ≤ 200 lines.
 4. **No per-frame allocation in hot paths.** Reuse nodes and particle structs.
@@ -43,6 +43,6 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 
 ## Done when
 
-- [ ] Instruments shows ≈0% CPU with the crew inside and the window closed
+- [ ] Instruments shows ≈0% CPU with the crew inside and the desk panel closed
 - [ ] The 100-session / burst replay scenarios meet the [performance budget](../quality/performance-budget.md)
 - [ ] Quit leaves no process, no overlay and no socket file

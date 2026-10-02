@@ -1,4 +1,4 @@
-// Lifecycle and ownership: socket listener → session store → status item and desk window.
+// Lifecycle and ownership: socket listener → session store → status item and desk panel.
 // The overlay arrives in M3 (docs/process/milestones.md).
 import AgentvilleCore
 import AppKit
@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) var listener: SocketListener?
 
     private var statusItem: StatusItemController?
-    private var deskWindow: DeskWindowController?
+    private var deskPanel: DeskPanelController?
     private var tickTimer: Timer?
     /// SIGTERM/SIGINT (`kill`, Ctrl-C) become a normal quit, so the socket file is removed then too.
     private var signalSources: [DispatchSourceSignal] = []
@@ -32,15 +32,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RunLoop.main.add(timer, forMode: .common)
         tickTimer = timer
         refreshStatusItem()
-        // Dev convenience for side-by-side reviews: `Agentville --show-window` opens the desk window.
-        if CommandLine.arguments.contains("--show-window") { toggleDeskWindow() }
+        // Dev convenience for side-by-side reviews: `Agentville --show-desk` opens the panel pinned.
+        // Next turn of the run loop, once the status item has a place on the menu bar.
+        if CommandLine.arguments.contains("--show-desk") {
+            DispatchQueue.main.async { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let p = self?.panel() else { return }
+                    p.setPinned(true)
+                    p.show()
+                }
+            }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         // Nothing survives quit (non-negotiable #3): close the socket and remove its file.
         listener?.stop()
         tickTimer?.invalidate()
-        deskWindow?.close()
+        deskPanel?.close()
         statusItem?.remove()
     }
 
@@ -88,21 +97,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Status item and desk window
+    // MARK: - Status item and desk panel
 
     private func buildStatusItem() {
         statusItem = StatusItemController(
-            onToggleWindow: { [weak self] in self?.toggleDeskWindow() },
-            isWindowVisible: { [weak self] in self?.deskWindow?.isVisible ?? false })
+            onTogglePanel: { [weak self] in self?.panel().toggle() },
+            isPinned: { [weak self] in self?.deskPanel?.pinned ?? false },
+            onTogglePin: { [weak self] in
+                guard let p = self?.panel() else { return }
+                p.setPinned(!p.pinned)
+                if p.pinned, !p.isVisible { p.show() }
+            })
     }
 
     private func refreshStatusItem() {
         statusItem?.update(store.summary, listening: listener != nil)
     }
 
-    private func toggleDeskWindow() {
-        if deskWindow == nil { deskWindow = DeskWindowController(app: self) }
-        guard let w = deskWindow else { return }
-        if w.isVisible { w.hide() } else { w.show() }
+    /// Built on first use, so an app nobody opens never creates the panel.
+    private func panel() -> DeskPanelController {
+        if let p = deskPanel { return p }
+        let p = DeskPanelController(app: self,
+                                    anchor: { [weak self] in self?.statusItem?.anchor },
+                                    moreMenu: { [weak self] in self?.statusItem?.moreMenu ?? NSMenu() })
+        p.onVisibilityChange = { [weak self] open in self?.statusItem?.setPanelOpen(open) }
+        deskPanel = p
+        return p
     }
 }

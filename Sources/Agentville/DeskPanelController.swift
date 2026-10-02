@@ -1,69 +1,154 @@
-// The desk window: the pixel office on top, the summary line, then the session list
-// (docs/product/user-experience.md#desk-window-the-office, docs/design/office.md).
-// The office redraws at about 12 fps and the list at most at 4 Hz, both only while the window is
+// The desk panel: drops down under the menu bar icon like Wi-Fi or Control Center
+// (docs/decisions/0009-desk-panel-dropdown.md). Inside: the pixel office, the summary line, the
+// session list and a small footer (pin, more). Click the icon again, click elsewhere or press Esc
+// to fold it away; pinned, it stays open and can be dragged anywhere.
+// The office redraws at about 12 fps and the list at most at 4 Hz, both only while the panel is
 // visible (docs/architecture/app.md#performance-rules). The Release button arrives with M3.
 import AgentvilleCore
 import AppKit
 
+/// Borderless and non-activating, so opening it doesn't pull focus from the user's app, but it can
+/// still become key for Esc.
+final class DeskPanel: NSPanel {
+    var onCancel: (() -> Void)?
+    override var canBecomeKey: Bool { true }
+    override func cancelOperation(_ sender: Any?) { onCancel?() }
+}
+
 @MainActor
-final class DeskWindowController: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate {
+final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSource, NSTableViewDelegate {
     private unowned let app: AppDelegate
-    private let window: NSWindow
+    private let panel: DeskPanel
     private let office = OfficeView()
     private let summary = NSTextField(labelWithString: "")
     private let table = NSTableView()
+    private let pinButton = NSButton()
+    private let moreButton = NSButton()
     private var rows: [DeskList.Row] = []
     private var officeTimer: Timer?
     private var listTimer: Timer?
+    private var outsideClicks: Any?
     private var shownRevision = -1
     private var shownSecond = -1
     private var shownBlink = false
     private let sprites = SpriteCache()
     private var avatars: [Look: CGImage] = [:]
+    /// Where the icon is (screen rect) and which screen's visible frame to stay inside.
+    private let anchor: () -> (icon: CGRect, screen: CGRect)?
+    private let moreMenu: () -> NSMenu
+    /// Tells the status item to show its pressed state while the panel is open.
+    var onVisibilityChange: ((Bool) -> Void)?
 
     /// Office layout in points: 2 pt per room unit (docs/design/office.md#geometry).
     static let officeSize = NSSize(width: OfficeRenderer.pixelSize.width, height: OfficeRenderer.pixelSize.height)
     static let rowHeight: CGFloat = 38
+    static let summaryHeight: CGFloat = 33
+    static let footerHeight: CGFloat = 34
+    /// Four rows show at once; more scroll (the prototype's list scrolls too).
+    static let size = NSSize(width: officeSize.width,
+                             height: officeSize.height + summaryHeight + 1 + 4 * rowHeight + 1 + footerHeight)
 
-    init(app: AppDelegate) {
+    private(set) var pinned = false
+
+    init(app: AppDelegate, anchor: @escaping () -> (icon: CGRect, screen: CGRect)?, moreMenu: @escaping () -> NSMenu) {
         self.app = app
-        let w = Self.officeSize.width
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: w, height: Self.officeSize.height + 33 + 4 * Self.rowHeight),
-                          styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                          backing: .buffered, defer: true)
+        self.anchor = anchor
+        self.moreMenu = moreMenu
+        panel = DeskPanel(contentRect: NSRect(origin: .zero, size: Self.size),
+                          styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         super.init()
-        window.title = "Agentville"
-        window.isReleasedWhenClosed = false
-        window.backgroundColor = Theme.win
-        window.contentMinSize = NSSize(width: w, height: Self.officeSize.height + 33 + 2 * Self.rowHeight)
-        window.contentMaxSize = NSSize(width: w, height: 4000)
-        window.delegate = self
+        panel.isReleasedWhenClosed = false
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .popUpMenu
+        panel.hidesOnDeactivate = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        panel.animationBehavior = .utilityWindow
+        panel.delegate = self
+        panel.onCancel = { [weak self] in self?.hide() }
         buildContent()
-        window.center()
     }
 
-    var isVisible: Bool { window.isVisible }
+    var isVisible: Bool { panel.isVisible }
+
+    func toggle() { if panel.isVisible { hide() } else { show() } }
 
     func show() {
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        place()
+        panel.makeKeyAndOrderFront(nil)
+        panel.invalidateShadow()
+        watchOutsideClicks()
         updateTimers()
+        onVisibilityChange?(true)
     }
 
     func hide() {
-        window.orderOut(nil)
+        guard panel.isVisible else { return }
+        panel.orderOut(nil)
+        watchOutsideClicks()
         updateTimers()
+        onVisibilityChange?(false)
     }
 
     func close() {
-        window.close()
+        panel.orderOut(nil)
+        if let m = outsideClicks { NSEvent.removeMonitor(m); outsideClicks = nil }
         updateTimers()
     }
 
-    // MARK: - Timers (run only while the window can be seen)
+    /// Pinned: stays open when you click elsewhere, floats above normal windows and can be dragged.
+    /// Unpinned: snaps back under the icon.
+    func setPinned(_ on: Bool) {
+        pinned = on
+        panel.isMovableByWindowBackground = on
+        panel.level = on ? .floating : .popUpMenu
+        pinButton.state = on ? .on : .off
+        pinButton.image = Self.symbol(on ? "pin.fill" : "pin", label: on ? "Unpin" : "Keep open")
+        pinButton.contentTintColor = on ? Theme.info : Theme.muted
+        pinButton.toolTip = on ? "Unpin: close when you click elsewhere" : "Keep open"
+        if !on, panel.isVisible { place() }
+        watchOutsideClicks()
+    }
+
+    private func place() {
+        guard let a = anchor() else { panel.center(); return }
+        panel.setFrame(PanelPlacement.frame(size: Self.size, under: a.icon, screen: a.screen), display: false)
+    }
+
+    /// Clicks in other apps fold the panel away. A global mouse monitor needs no permission (only
+    /// key monitors do: non-negotiable #9) and exists only while an unpinned panel is open.
+    private func watchOutsideClicks() {
+        let want = panel.isVisible && !pinned
+        if want, outsideClicks == nil {
+            outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] _ in
+                MainActor.assumeIsolated { self?.hide() }
+            }
+        } else if !want, let m = outsideClicks {
+            NSEvent.removeMonitor(m)
+            outsideClicks = nil
+        }
+    }
+
+    // MARK: - NSWindowDelegate
+
+    /// Another of our windows taking key (a future Settings window) also folds an unpinned panel.
+    func windowDidResignKey(_ notification: Notification) {
+        guard !pinned else { return }
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, NSApp.keyWindow != nil, NSApp.keyWindow !== self.panel else { return }
+                self.hide()
+            }
+        }
+    }
+
+    func windowDidChangeOcclusionState(_ notification: Notification) { updateTimers() }
+
+    // MARK: - Timers (run only while the panel can be seen)
 
     private var canBeSeen: Bool {
-        window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible)
+        panel.isVisible && panel.occlusionState.contains(.visible)
     }
 
     private func updateTimers() {
@@ -89,14 +174,19 @@ final class DeskWindowController: NSObject, NSWindowDelegate, NSTableViewDataSou
         return t
     }
 
-    func windowWillClose(_ notification: Notification) {
-        officeTimer?.invalidate(); officeTimer = nil
-        listTimer?.invalidate(); listTimer = nil
+    // MARK: - Footer
+
+    private static func symbol(_ name: String, label: String) -> NSImage? {
+        NSImage(systemSymbolName: name, accessibilityDescription: label)?
+            .withSymbolConfiguration(.init(pointSize: 12, weight: .medium))
     }
 
-    func windowDidChangeOcclusionState(_ notification: Notification) { updateTimers() }
-    func windowDidMiniaturize(_ notification: Notification) { updateTimers() }
-    func windowDidDeminiaturize(_ notification: Notification) { updateTimers() }
+    @objc private func togglePin() { setPinned(!pinned) }
+
+    @objc private func showMore() {
+        let m = moreMenu()
+        m.popUp(positioning: nil, at: NSPoint(x: 0, y: moreButton.bounds.height + 4), in: moreButton)
+    }
 
     // MARK: - Office
 
@@ -211,17 +301,37 @@ final class DeskWindowController: NSObject, NSWindowDelegate, NSTableViewDataSou
         scroll.backgroundColor = Theme.win
         scroll.borderType = .noBorder
 
-        let rule = NSBox()
-        rule.boxType = .custom
-        rule.borderWidth = 0
-        rule.fillColor = Theme.line
+        let rule = Self.rule()
+        let footRule = Self.rule()
 
+        for (b, sel) in [(pinButton, #selector(togglePin)), (moreButton, #selector(showMore))] {
+            b.isBordered = false
+            b.bezelStyle = .regularSquare
+            b.imagePosition = .imageOnly
+            b.target = self
+            b.action = sel
+            b.contentTintColor = Theme.muted
+        }
+        moreButton.image = Self.symbol("ellipsis.circle", label: "More")
+        moreButton.toolTip = "More"
+        setPinned(false)
+
+        // Rounded like Control Center's panels; the clear window shadow follows the corners.
         let content = WindowBackground()
-        for v in [office, summary, rule, scroll] as [NSView] {
+        content.wantsLayer = true
+        content.layer?.cornerRadius = 10
+        content.layer?.cornerCurve = .continuous
+        content.layer?.masksToBounds = true
+        content.layer?.borderWidth = 1
+        content.layer?.borderColor = NSColor(white: 0.5, alpha: 0.25).cgColor
+        for v in [office, summary, rule, scroll, footRule, pinButton, moreButton] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
         NSLayoutConstraint.activate([
+            // A borderless window takes its size from the content, so pin it.
+            content.widthAnchor.constraint(equalToConstant: Self.size.width),
+            content.heightAnchor.constraint(equalToConstant: Self.size.height),
             office.topAnchor.constraint(equalTo: content.topAnchor),
             office.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             office.widthAnchor.constraint(equalToConstant: Self.officeSize.width),
@@ -229,16 +339,36 @@ final class DeskWindowController: NSObject, NSWindowDelegate, NSTableViewDataSou
             summary.topAnchor.constraint(equalTo: office.bottomAnchor, constant: 9),
             summary.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
             summary.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -12),
-            rule.topAnchor.constraint(equalTo: summary.bottomAnchor, constant: 7),
+            rule.topAnchor.constraint(equalTo: office.bottomAnchor, constant: Self.summaryHeight),
             rule.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             rule.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             rule.heightAnchor.constraint(equalToConstant: 1),
             scroll.topAnchor.constraint(equalTo: rule.bottomAnchor),
             scroll.leadingAnchor.constraint(equalTo: content.leadingAnchor),
             scroll.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            scroll.bottomAnchor.constraint(equalTo: footRule.topAnchor),
+            footRule.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            footRule.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            footRule.heightAnchor.constraint(equalToConstant: 1),
+            footRule.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.footerHeight),
+            moreButton.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -10),
+            moreButton.centerYAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.footerHeight / 2),
+            moreButton.widthAnchor.constraint(equalToConstant: 24),
+            moreButton.heightAnchor.constraint(equalToConstant: 24),
+            pinButton.trailingAnchor.constraint(equalTo: moreButton.leadingAnchor, constant: -4),
+            pinButton.centerYAnchor.constraint(equalTo: moreButton.centerYAnchor),
+            pinButton.widthAnchor.constraint(equalToConstant: 24),
+            pinButton.heightAnchor.constraint(equalToConstant: 24),
         ])
-        window.contentView = content
+        panel.contentView = content
+    }
+
+    private static func rule() -> NSBox {
+        let r = NSBox()
+        r.boxType = .custom
+        r.borderWidth = 0
+        r.fillColor = Theme.line
+        return r
     }
 }
 

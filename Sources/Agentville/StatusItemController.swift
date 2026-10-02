@@ -1,24 +1,31 @@
-// The menu bar item: pixel head, session count, red dot when anything needs you, and the menu
+// The menu bar item: pixel head, session count, red dot when anything needs you
 // (docs/product/user-experience.md#menu-bar-item). Port of the prototype's `.mb-crew` button.
-// Release/recall (M3) and Settings (M7) join the menu in their milestones.
+// Left click drops the desk panel down; right click (or ⌃-click) opens the menu
+// (docs/decisions/0009-desk-panel-dropdown.md). Release/recall (M3) and Settings (M7) join later.
 import AgentvilleCore
 import AppKit
 
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let menu = NSMenu()
     private let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-    private let toggleWindow = NSMenuItem(title: "Show Window", action: nil, keyEquivalent: "")
+    private let keepOpen = NSMenuItem(title: "Keep Panel Open", action: nil, keyEquivalent: "")
     private let dot = CALayer()
     private var needsYou = false
-    private let onToggleWindow: () -> Void
-    private let isWindowVisible: () -> Bool
+    private let onTogglePanel: () -> Void
+    private let isPinned: () -> Bool
+    private let onTogglePin: () -> Void
 
-    init(onToggleWindow: @escaping () -> Void, isWindowVisible: @escaping () -> Bool) {
-        self.onToggleWindow = onToggleWindow
-        self.isWindowVisible = isWindowVisible
+    init(onTogglePanel: @escaping () -> Void, isPinned: @escaping () -> Bool, onTogglePin: @escaping () -> Void) {
+        self.onTogglePanel = onTogglePanel
+        self.isPinned = isPinned
+        self.onTogglePin = onTogglePin
         super.init()
         guard let button = item.button else { return }
+        button.target = self
+        button.action = #selector(clicked)
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.image = Self.headImage()
         button.imagePosition = .imageLeading
         button.toolTip = "Agentville"
@@ -30,17 +37,43 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         dot.isHidden = true
         button.layer?.addSublayer(dot)
 
-        let menu = NSMenu()
         menu.delegate = self
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
-        toggleWindow.target = self
-        toggleWindow.action = #selector(toggle)
-        menu.addItem(toggleWindow)
+        keepOpen.target = self
+        keepOpen.action = #selector(togglePin)
+        menu.addItem(keepOpen)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Agentville", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        item.menu = menu
+    }
+
+    /// The same menu, for the panel's "⋯" button.
+    var moreMenu: NSMenu { menu }
+
+    /// The icon's rect on screen and that screen's visible frame, for placing the panel under it.
+    var anchor: (icon: CGRect, screen: CGRect)? {
+        guard let button = item.button, let w = button.window, let screen = w.screen else { return nil }
+        return (w.convertToScreen(button.convert(button.bounds, to: nil)), screen.visibleFrame)
+    }
+
+    /// Pressed look while the panel is open, like a status item whose menu is showing.
+    func setPanelOpen(_ open: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated { self?.item.button?.highlight(open) }
+        }
+    }
+
+    @objc private func clicked() {
+        let e = NSApp.currentEvent
+        if e?.type == .rightMouseUp || e?.modifierFlags.contains(.control) == true {
+            // Attach the menu just for this click so a left click stays free for the panel.
+            item.menu = menu
+            item.button?.performClick(nil)
+            item.menu = nil
+        } else {
+            onTogglePanel()
+        }
     }
 
     func remove() { NSStatusBar.system.removeStatusItem(item) }
@@ -88,10 +121,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
-        toggleWindow.title = isWindowVisible() ? "Hide Window" : "Show Window"
+        keepOpen.state = isPinned() ? .on : .off
     }
 
-    @objc private func toggle() { onToggleWindow() }
+    @objc private func togglePin() { onTogglePin() }
 }
 
 private extension NSFont {

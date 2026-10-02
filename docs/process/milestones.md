@@ -2,13 +2,13 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M2** (menu bar + desk window; sprite renderer port). M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M2** (menu bar + desk panel; sprite renderer port). M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
 | M0 | Repo skeleton, docs, privacy promises, guards, CI | The owner agrees on the open questions marked M0 |
 | M1 | `agentville-hook`, wire codec, socket listener, session store, replay tool | Replay scenarios produce correct session states in a debug list; all hook tests pass |
-| M2 | Menu bar item + desk window (office + list); sprite renderer port | The office matches the prototype with replayed sessions, all states and monitor screens |
+| M2 | Menu bar item + desk panel (office + list); sprite renderer port | The office matches the prototype with replayed sessions, all states and monitor screens |
 | M3 | Overlay, release and recall | Pour-out and suck-back match the prototype; click-through verified over real apps; recall rules pass |
 | M4 | Roaming, meetings, particles, subagent sidekicks | All activity poses play on the desktop driven by replayed events |
 | M5 | ⌥ grab, drag, throw; hover fade; global shortcut | Grab rules pass; no permissions requested |
@@ -36,19 +36,20 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] `SessionStore` with every transition, staleness and stress tests
 - [x] `SocketListener` in the app (bind, batch, unlink on quit): `SocketListenerTests` (real socket: order, drops, re-sanitize, burst batching, socket → store equals direct apply, unlink only our own file). Manual 2026-10-01: replay `demo-mix` and a 1,080-event burst all accepted; quit by SIGTERM/SIGINT leaves no socket file; 0.00 s CPU over 30 s idle
 - [x] `agentville-replay` + all scenarios in [testing-strategy.md](../quality/testing-strategy.md#replay-scenarios-m1) (scenarios are executable specs)
-- [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D). Replaced in M2 by the desk window
+- [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D). Replaced in M2 by the desk panel
 - [x] Owner checks a replayed scenario in the debug window: 2026-10-01, `demo-mix` final state matched every `expect` line (5 sessions, 18 events received, 0 dropped)
 - [x] Owner checks a real Claude Code session in the debug window: 2026-10-01, plugin installed from the local marketplace + `scripts/dev-link-hook.sh`; owner confirmed the states looked right
 
-## M2: menu bar + desk window
+## M2: menu bar + desk panel
 
 - [x] Sprite renderer port (`drawChar`, `sprite`, `outline`, `avatar`, `drawEmote`) with golden frames exported from the prototype: `SpriteRendererTests`
 - [x] Bounded sprite cache (`SpriteCache`, LRU 2,000)
 - [x] `PixelCanvas` → `CGImage` in the app, nearest-neighbour, integer scales: `PixelImage` (Core, CoreGraphics only), `PixelImageTests`
 - [x] Office renderer port (`drawOffice`, `screenFor`, `deskUnits`): day/night, 6 desks, every monitor screen, "+N more below" count; golden office frames: `OfficeRendererTests`. About 2 ms per frame in a debug build
-- [x] Desk window: office (≈12 fps, stops when hidden; "+N more below" badge) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list. `DeskWindowController` + `DeskList` (`DeskListTests`); 2026-10-02: snapshots of the window during `demo-mix` and an 8-session twins replay checked against the prototype's layout
+- [x] Desk window: office (≈12 fps, stops when hidden; "+N more below" badge) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list. `DeskPanelController` + `DeskList` (`DeskListTests`); 2026-10-02: snapshots of the window during `demo-mix` and an 8-session twins replay checked against the prototype's layout
 - [x] Status item: pixel head, count, red dot when anything needs you: `StatusItemController`, `MenuBarIcon` (`MenuBarIconTests`). Not yet seen on a real menu bar: part of the owner's review
-- [ ] Owner's side-by-side review against the prototype with replayed sessions
+- [x] Owner's first review (2026-10-02): contents approved; asked for a dropdown instead of a window → [0009](../decisions/0009-desk-panel-dropdown.md): `DeskPanelController`, `PanelPlacement` (`PanelPlacementTests`)
+- [ ] Owner's side-by-side review of the dropdown panel against the prototype with replayed sessions
 
 ## Later milestones
 
