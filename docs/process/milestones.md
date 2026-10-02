@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M3** (overlay, release and recall). M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M3/M4.** M3 (overlay, release and recall) is code-complete and waits on the owner's manual checks; M4's desktop behaviour (meetings, sidekicks, activity particles) is built and waits on the owner's review. M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -62,8 +62,22 @@ Scope: the crew pours out of the desk panel onto the desktop and gets sucked bac
 - [x] Desk panel footer: the chunky **Release the crew** button (orange, invite bounce until first use) that turns blue and reads **Call the crew back**; the same item in the status menu; burp on release, gulp when the last one is home; empty desks while the crew is out
 - [x] Homes: desks while the panel is open, otherwise the menu bar icon. 2026-10-02: in-app snapshots during `demo-mix` checked: the crew leaves the desks, lands spread over the screen in its poses with emotes and shadows, and is home with the desktop empty 2 s after recall
 - [x] Pulled forward from M4 at the owner's request (2026-10-02): **roaming**. Port of `roam`, `walkTo`, `nearbyTarget`: act 3–7 s (idle 6–12 s), then walk to a nearby spot at 48 pt/s (search creep 26, idle stroll 32); "needs you" runs to the bottom of the screen at 120 pt/s and waves; a finished turn cheers for 2.6 s first. `CrewSimTests` (speeds, bounds over 2 minutes with 12 out, poses). Meetings, sidekicks and activity particles stay in M4
-- [ ] Manual: click-through over real apps (buttons, text, scroll, drag-and-drop, resize); quit with the crew out leaves nothing
+- [x] Quit with the crew out leaves nothing (non-negotiable #3): `scripts/check-quit-cleanup.sh` launches the app with `--release-crew`, replays `demo-mix` so sessions drop in, quits by SIGTERM and SIGINT. 2026-10-02: exits within 5 s, no child processes, socket file removed, both signals
+- [ ] Manual: click-through over real apps (buttons, text, scroll, drag-and-drop, resize)
 - [ ] Owner's side-by-side review of release and recall against the prototype
+
+## M4: roaming, meetings, particles, sidekicks
+
+Scope: everything a released character does on the desktop, driven by real or replayed events. Roaming came early (M3). The crowd ("+N", "My turn!") and walk-ons are M6; dizziness follows throwing in M5.
+
+- [x] Done: a 2.6 s cheer, a green **Done!** bubble with "name · turn time" for 5 s, 26 confetti (a quarter with reduced motion) and sprinkles while cheering (port of `onDone`). Needs you: a red **Needs you** bubble with the name while waiting, cleared when answered. Twins are named "api 2". `CrewActivityTests`
+- [x] Activity particles (ports of `confetti`, `zzz`, `bits`, `stepParts`): typing bits about 3/s, Bash sparks on each hammer strike, the telescope's twinkles, sleepers' z's; confetti falls at 0.55 G, flutters and settles. All under the 520 cap. `CrewActivityTests`
+- [x] Meetings (port of `checkMeetings`): every 0.35 s, two working walkers within 44 pt stop 1.6 s, face each other, cheer 0.8 s, heart (⅔) or ? (⅓), 50% say a line, pink sparkles; cooldown 18–30 s (6–16 s at first). `CrewActivityTests`
+- [x] Subagent sidekicks: a one-size-smaller mini-me pops in with yellow sparkles, follows at 140 pt/s to `x − face·11·S, y + 3`, walks while catching up and types when still, poofs on the last `SubagentStop` or a recall; several subagents show a yellow count badge (open question 12's default). `CrewActivityTests`
+- [x] Overlay drawing: confetti flakes, z's, bits, sidekicks with shadows and the badge, bubble kinds with a subtitle line. 2026-10-02: in-app snapshots during `desktop-tour` show the Done! bubble with confetti, the "3" badge, and the Needs you bubble
+- [x] `Tools/scenarios/desktop-tour.jsonl`: every activity, a sidekick of 3, a Done!, a Needs you and an idle sleeper
+- [ ] Owner's side-by-side review of the desktop tour against the prototype
+- [ ] Error, planning and MCP poses (open question 12): fallbacks (think, think, idle) until the owner decides
 
 ## Later milestones
 

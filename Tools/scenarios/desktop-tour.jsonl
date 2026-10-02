@@ -1,0 +1,39 @@
+// M4 desktop tour: release the crew first, then replay. Every activity pose with its particles (typing
+// bits, Bash sparks, the telescope's twinkles, thinking dots), a sidekick with a "3" badge, a Done!
+// cheer with confetti at 6 s, a Needs you run at 10 s, and a sleeper or coffee drinker once idle.
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-edit", "project": "api-server"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-edit", "project": "api-server", "tool": "Edit"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-read", "project": "docs-site"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-read", "project": "docs-site", "tool": "Read"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-bash", "project": "infra"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-bash", "project": "infra", "tool": "Bash"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-grep", "project": "scraper"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-grep", "project": "scraper", "tool": "Grep"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-web", "project": "chess-bot"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-web", "project": "chess-bot", "tool": "WebFetch"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-think", "project": "ml-notebook"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-subs", "project": "payments"}
+{"at": 0.2, "event": "SubagentStart", "session": "tour-subs", "project": "payments", "agent_id": "a1", "agent_type": "Explore"}
+{"at": 0.4, "event": "SubagentStart", "session": "tour-subs", "project": "payments", "agent_id": "a2", "agent_type": "Plan"}
+{"at": 0.6, "event": "SubagentStart", "session": "tour-subs", "project": "payments", "agent_id": "a3", "agent_type": "general-purpose"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-done", "project": "blog"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-done", "project": "blog", "tool": "Write"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-ask", "project": "dotfiles"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-ask", "project": "dotfiles", "tool": "Glob"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-nap", "project": "homelab"}
+{"at": 0.5, "event": "Stop", "session": "tour-nap", "project": "homelab"}
+{"at": 0.7, "expect": {"session": "tour-subs", "status": "working:thinking", "subagents": 3}}
+{"at": 0.7, "expect": {"session": "tour-web", "status": "working:web"}}
+{"at": 6.0, "event": "Stop", "session": "tour-done", "project": "blog"}
+{"at": 6.1, "expect": {"session": "tour-done", "status": "finished"}}
+{"at": 10.0, "event": "PermissionRequest", "session": "tour-ask", "project": "dotfiles", "tool": "Bash"}
+{"at": 10.1, "expect": {"session": "tour-ask", "status": "needsYou"}}
+{"at": 12.0, "tick": true}
+{"at": 12.1, "expect": {"session": "tour-nap", "status": "idle"}}
+{"at": 20.0, "event": "SubagentStop", "session": "tour-subs", "project": "payments", "agent_id": "a1"}
+{"at": 20.0, "event": "SubagentStop", "session": "tour-subs", "project": "payments", "agent_id": "a2"}
+{"at": 20.1, "expect": {"session": "tour-subs", "status": "working:thinking", "subagents": 1}}
+{"at": 30.0, "event": "PreToolUse", "session": "tour-ask", "project": "dotfiles", "tool": "Bash"}
+{"at": 30.1, "expect": {"session": "tour-ask", "status": "working:running"}}
+{"at": 40.0, "event": "SubagentStop", "session": "tour-subs", "project": "payments", "agent_id": "a3"}
+{"at": 40.1, "expect": {"session": "tour-subs", "status": "working:thinking", "subagents": 0}}

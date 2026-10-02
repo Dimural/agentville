@@ -24,17 +24,37 @@ public struct Home: Equatable, Sendable {
 }
 
 public struct Particle: Equatable, Sendable {
-    public enum Kind: Equatable, Sendable { case spark, dust }
+    /// Prototype `k`: `spark`, `dust`, `conf`, `z`, `bit`.
+    public enum Kind: Equatable, Sendable { case spark, dust, confetti, zzz, bit }
     public var kind: Kind
     public var x, y, z, vx, vy, vz: Double
     public var life = 0.0, max: Double
     public var color: RGB
+    /// Confetti flutter phase (prototype `ph`).
+    public var phase = 0.0
 }
 
-public struct Bubble: Equatable, Sendable {
+public struct Bubble: Hashable, Sendable {
+    /// Prototype bubble classes: `say`, `done` (green title), `wait` (red title).
+    public enum Kind: Hashable, Sendable { case say, done, wait }
     public var text: String
+    public var kind = Kind.say
+    /// Second, smaller line (prototype `sub`): the session's name, and the turn time when done.
+    public var sub: String?
     /// Sim time after which it disappears.
     public var until: Double
+}
+
+/// A subagent's mini-me, following its character around (prototype `e.side`).
+public struct Sidekick: Equatable, Sendable {
+    public var x, y: Double
+    public var face: Double
+    public var moving = false
+    /// Subagents running; more than one shows a count badge (open question 12's default).
+    public var count: Int
+    public var frame = 0
+    /// Walks while catching up, types while still.
+    public var pose: Pose { moving ? .walk : .type }
 }
 
 public struct Flight: Equatable, Sendable {
@@ -78,18 +98,24 @@ public struct CrewMember: Equatable, Sendable {
     public var frame = 0
     public var emote: Emote?
     public var bubble: Bubble?
+    public var side: Sidekick?
     var anim: Double
     var t = 0.0
     var blinkT: Double
     var timer = 0.0
     /// Roaming: acting in place, or walking to (tx, ty).
-    enum Phase: Equatable, Sendable { case act, walk }
+    enum Phase: Equatable, Sendable { case act, walk, meet }
     var phase = Phase.act
     var tx = 0.0, ty = 0.0
     /// Running to the bottom of the screen because the session needs the user.
     var alert = false
     var cheerT = 0.0
     var lastStatus: SessionStatus?
+    /// Meetings: seconds until it may meet someone again, and the emote it shows while meeting.
+    var meetCd: Double
+    var meetEmote: Emote?
+    /// Last Bash frame, so sparks fly once per hammer strike.
+    var lastFrame = 0
 
     /// Horizontal and vertical stretch, as `drawEnt` applies it.
     public var stretch: (x: Double, y: Double) {
@@ -103,6 +129,7 @@ public struct CrewMember: Equatable, Sendable {
 
     public static func == (a: CrewMember, b: CrewMember) -> Bool {
         a.id == b.id && a.x == b.x && a.y == b.y && a.z == b.z && a.mode == b.mode && a.pose == b.pose && a.frame == b.frame
+            && a.side == b.side
     }
 }
 
@@ -134,6 +161,8 @@ public final class CrewSim {
     /// Bumped by every release and recall, so stale scheduled actions do nothing (prototype `token`).
     private var token = 0
     private var looks: [String: Look] = [:]
+    /// Meetings are checked every `Motion.meetCheck` seconds (prototype `meetClock`).
+    private var meetClock = 0.0
     private var rng: SplitMix64
 
     public init(stage: Stage, seed: UInt64 = UInt64.random(in: 1...UInt64.max)) {
@@ -146,6 +175,13 @@ public final class CrewSim {
 
     /// Sessions whose desks are empty because their character is out.
     public var awayIDs: Set<String> { Set(members.keys) }
+
+    /// Tests only: put a character somewhere particular (`@testable`).
+    func modify(_ id: String, _ body: (inout CrewMember) -> Void) {
+        guard var m = members[id] else { return }
+        body(&m)
+        members[id] = m
+    }
 
     // MARK: - Release and recall
 
@@ -216,6 +252,7 @@ public final class CrewSim {
         var events: [CrewEvent] = []
         runPending(&events)
         for id in members.keys.sorted() { step(id, dt: dt, sessions: sessions, events: &events) }
+        checkMeetings(dt)
         stepParticles(dt)
         return events
     }
@@ -289,7 +326,7 @@ public final class CrewSim {
 
     private func newMember(_ id: String, look: Look, x: Double, y: Double, scale: Double) -> CrewMember {
         CrewMember(id: id, look: look, x: x, y: y, face: chance(0.5) ? 1 : -1, scale: scale, mode: .rest,
-                   anim: rand(0...10), blinkT: rand(2...5))
+                   anim: rand(0...10), blinkT: rand(2...5), meetCd: rand(Motion.meetFirstCooldown))
     }
 
     /// Port of the `fly`/`wait`/`drop`/`leave` branches of `updateEnt`, plus M3's in-place acting.
@@ -358,6 +395,7 @@ public final class CrewSim {
             pose = roam(&m, dt: dt, session: sessions[id])
         }
         if m.mode != .rest { m.hop = 0 }
+        followWithSidekick(&m, dt: dt, session: sessions[id])
 
         // Blink (prototype: every 2.5–5 s for 0.12 s, idle pose only).
         m.blinkT -= dt
@@ -367,19 +405,27 @@ public final class CrewSim {
         members[id] = m
     }
 
+    /// The name bubbles use: the project, with the twin number for later sessions in one folder.
+    static func name(_ s: Session) -> String { s.twinIndex > 1 ? "\(s.project) \(s.twinIndex)" : s.project }
+
     /// Port of `roam`: act out the session for a while, then walk somewhere nearby. Needing the
     /// user means running to the bottom of the screen to wave; a finished turn means a cheer first.
-    /// Meetings, sidekicks and the activity particles arrive later in M4.
     private func roam(_ m: inout CrewMember, dt: Double, session: Session?) -> Pose {
         guard let s = session else { m.hop = 0; return .idle }
         m.look = s.look
-        // A turn just finished (prototype `onDone`: cheerT = 2.6).
-        if s.status == .finished, m.lastStatus != nil, m.lastStatus != .finished { m.cheerT = Motion.cheer }
+        // A turn just finished (port of `onDone`): cheer, say Done! with the turn time, confetti.
+        if s.status == .finished, m.lastStatus != nil, m.lastStatus != .finished {
+            m.cheerT = Motion.cheer
+            let sub = s.lastTurnDuration.map { "\(Self.name(s)) · \(DeskList.duration($0))" } ?? Self.name(s)
+            m.bubble = Bubble(text: Phrases.done, kind: .done, sub: sub, until: time + Motion.doneBubble)
+            confetti(x: m.x, y: m.y - 30, count: Motion.doneConfetti)
+        }
         m.lastStatus = s.status
         if m.cheerT > 0 {
             m.cheerT -= dt
             m.hop = abs(sin(m.t * 9)) * 12
             m.emote = .icon(.check)
+            if chance(dt * 6) { confetti(x: m.x, y: m.y - 40, count: 2) }
             return .cheer
         }
         m.hop = 0
@@ -391,6 +437,7 @@ public final class CrewSim {
                 m.ty = stage.bottom - 26
                 m.phase = .walk
             }
+            m.bubble = Bubble(text: Phrases.needsYou, kind: .wait, sub: Self.name(s), until: time + 0.3)
             m.emote = .icon(.bang)
             if m.phase == .walk {
                 if walk(&m, dt: dt, speed: Motion.needsYouRun) { m.phase = .act } else { return .walk }
@@ -398,7 +445,13 @@ public final class CrewSim {
             m.hop = abs(sin(m.t * 7)) * 9
             return .wave
         }
-        if m.alert { m.alert = false; m.phase = .act; m.timer = 0.3 }
+        if m.alert { m.alert = false; m.bubble = nil; m.phase = .act; m.timer = 0.3 }
+        if m.phase == .meet {
+            m.timer -= dt
+            if m.timer <= 0 { m.phase = .act; m.timer = 0.2 }
+            m.emote = m.meetEmote
+            return m.timer > Motion.meet - Motion.meetCheer ? .cheer : .idle
+        }
 
         let idle = s.status == .idle || s.status == .finished
         let work = OfficeScene.DeskState(s.status)
@@ -420,18 +473,102 @@ public final class CrewSim {
             m.phase = .walk
             return .walk
         }
-        if idle { return s.look.rest == .sleep ? .sleep : .coffee }
+        let S = stage.scale
+        if idle {
+            guard s.look.rest == .sleep else { return .coffee }
+            if chance(dt * 0.9) { zzz(x: m.x + m.face * 4 * S, y: m.y - 22 * S) }
+            return .sleep
+        }
         switch work {
-        case .working(.edit): return .type
+        case .working(.edit):
+            if chance(dt * 3) { bit(x: m.x + m.face * 7 * S, y: m.y - 10 * S) }
+            return .type
         case .working(.read): return .read
-        case .working(.bash): return .bash
+        case .working(.bash):
+            // A shower of sparks on each strike (frame 0 → 1).
+            let f = Int(floor(m.anim * (Self.fps[.bash] ?? 3))) % 2
+            if f == 1, m.lastFrame == 0 {
+                for _ in 0..<4 {
+                    add(Particle(kind: .spark, x: m.x + m.face * 9 * S, y: m.y, z: 12 * S, vx: rand(-80...80),
+                                 vy: rand(-20...20), vz: rand(40...160), max: 0.35, color: pick(Self.bashColors)))
+                }
+            }
+            m.lastFrame = f
+            return .bash
         case .working(.search): return .search
-        case .working(.web): return .web
+        case .working(.web):
+            if chance(dt * 1.5) {
+                add(Particle(kind: .spark, x: m.x + m.face * (10 * S + rand(0...20)), y: m.y, z: 26 * S + rand(0...24),
+                             vx: 0, vy: 0, vz: 0, max: 0.7, color: RGB(0xFFEC27)))
+            }
+            return .web
         case .working(.think):
             m.emote = .dots(Int(floor(m.t * 3)) % 4)
             return .think
         default: return .idle
         }
+    }
+
+    /// Port of `checkMeetings`: two working characters who pass within 44 pt stop to say hi.
+    private func checkMeetings(_ dt: Double) {
+        meetClock -= dt
+        guard meetClock <= 0 else { return }
+        meetClock = Motion.meetCheck
+        let ids = members.keys.sorted().filter {
+            guard let m = members[$0], m.mode == .rest, m.phase == .walk else { return false }
+            return m.lastStatus.map { if case .working = $0 { true } else { false } } ?? false
+        }
+        for id in ids { members[id]?.meetCd -= Motion.meetCheck }
+        for (i, ia) in ids.enumerated() {
+            for ib in ids[(i + 1)...] {
+                guard var a = members[ia], var b = members[ib], a.meetCd <= 0, b.meetCd <= 0,
+                      hypot(a.x - b.x, a.y - b.y) < Motion.meetDistance else { continue }
+                let em: Emote = pick([.icon(.heart), .icon(.heart), .icon(.quest)])
+                meet(&a, facing: b, emote: em)
+                meet(&b, facing: a, emote: nil)
+                if chance(0.5) { a.bubble = Bubble(text: pick(Phrases.meet), until: time + 1.3) }
+                members[ia] = a
+                members[ib] = b
+                sparkle(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 30, count: 5, color: RGB(0xFF77A8))
+                return
+            }
+        }
+    }
+
+    private func meet(_ m: inout CrewMember, facing other: CrewMember, emote: Emote?) {
+        m.phase = .meet
+        m.timer = Motion.meet
+        m.face = other.x > m.x ? 1 : -1
+        m.meetCd = rand(Motion.meetCooldown)
+        m.meetEmote = emote
+    }
+
+    /// Port of the sidekick block of `updateEnt`: while the session has subagents, a mini-me pops in
+    /// with yellow sparkles and follows a step behind; it poofs when they're done or the crew leaves.
+    private func followWithSidekick(_ m: inout CrewMember, dt: Double, session: Session?) {
+        guard let s = session, !s.subagents.isEmpty, m.mode == .rest else {
+            if let side = m.side { sparkle(x: side.x, y: side.y - 8, count: 5); m.side = nil }
+            return
+        }
+        if m.side == nil {
+            m.side = Sidekick(x: m.x - 18 * m.face, y: m.y + 4, face: m.face, count: 0)
+            sparkle(x: m.x - 18 * m.face, y: m.y + 4 - 10, count: 6, color: RGB(0xFFEC27))
+        }
+        guard var side = m.side else { return }
+        side.count = s.subagents.count
+        let tx = m.x - m.face * 11 * stage.scale, ty = m.y + 3
+        let d = hypot(tx - side.x, ty - side.y)
+        side.moving = d > 3
+        if side.moving {
+            let step = min(d, Motion.sidekickFollow * dt)
+            side.x += (tx - side.x) / d * step
+            side.y += (ty - side.y) / d * step
+            side.face = tx > side.x ? 1 : -1
+        } else {
+            side.face = m.face
+        }
+        side.frame = Int(m.anim * (Self.fps[side.pose] ?? 2)) % side.pose.frameCount
+        m.side = side
     }
 
     /// Port of `walkTo`: true when it has arrived.
@@ -461,6 +598,31 @@ public final class CrewSim {
     }
 
     static let sparkColors = [RGB(0xFFEC27), RGB(0xFFF1E8), RGB(0x29ADFF)]
+    static let bashColors = [RGB(0xFFEC27), RGB(0xFFA300), RGB(0xFFF1E8)]
+    static let bitColors = [RGB(0xFF77A8), RGB(0x29ADFF), RGB(0xFFEC27), RGB(0x00E436)]
+    /// Prototype `CONF`.
+    static let confettiColors = [RGB(0xFF004D), RGB(0xFFA300), RGB(0xFFEC27), RGB(0x00E436), RGB(0x29ADFF),
+                                 RGB(0xFF77A8), RGB(0x83769C), RGB(0xFFF1E8)]
+
+    /// Port of `confetti`: a quarter as many with reduced motion.
+    public func confetti(x: Double, y: Double, count: Int) {
+        let n = reduceMotion ? (count + 3) / 4 : count
+        for _ in 0..<n {
+            add(Particle(kind: .confetti, x: x, y: y, z: rand(20...50), vx: rand(-160...160), vy: rand(-50...50),
+                         vz: rand(250...560), max: rand(1.3...2.2), color: pick(Self.confettiColors), phase: rand(0...6)))
+        }
+    }
+
+    /// Port of `zzz`.
+    func zzz(x: Double, y: Double) {
+        add(Particle(kind: .zzz, x: x, y: y, z: 0, vx: rand(8...18), vy: 0, vz: 22, max: 1.8, color: RGB(0xFFF1E8)))
+    }
+
+    /// Port of `bits`.
+    func bit(x: Double, y: Double) {
+        add(Particle(kind: .bit, x: x + rand(-4...4), y: y, z: 0, vx: rand(-10...10), vy: 0, vz: rand(30...50),
+                     max: rand(0.8...1.3), color: pick(Self.bitColors)))
+    }
 
     public func sparkle(x: Double, y: Double, count: Int, color: RGB? = nil) {
         for _ in 0..<count {
@@ -483,6 +645,16 @@ public final class CrewSim {
             var p = p
             p.life += dt
             guard p.life < p.max else { return nil }
+            if p.kind == .confetti {
+                // Falls at 0.55 G, flutters sideways, and settles on the ground.
+                p.vz -= Motion.gravity * 0.55 * dt
+                p.vx += sin(p.life * 9 + p.phase) * 140 * dt
+                p.z += p.vz * dt
+                if p.z < 0 { p.z = 0; p.vz = 0; p.vx *= 0.8; p.vy *= 0.8 }
+                p.x += p.vx * dt
+                p.y += p.vy * dt
+                return p
+            }
             p.z += p.vz * dt
             p.x += p.vx * dt
             p.y += p.vy * dt

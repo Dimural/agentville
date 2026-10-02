@@ -36,7 +36,8 @@ Purpose: every number that shapes how the crew moves and behaves, copied from th
 - Walkable area: x in [36, W − 36]; y from `TOP + 26·S + 6` to `H − 16`.
 - Needs you: walk to (clamp(x, 60, W − 60), H − 26), then wave and hop `|sin(7t)|·9`.
 - Cheer after Done: 2.6 s, hop `|sin(9t)|·12`, confetti sprinkles.
-- Sidekick: follows at `x − face·11·S`, `y + 3`; types when still. Pops in and out with yellow sparkles.
+- Sidekick: follows at `x − face·11·S`, `y + 3`; types when still. Pops in and out with yellow sparkles. Several subagents: one sidekick with a small yellow count badge above its head (open question 12's default).
+- Done: the bubble reads **Done!** in green over "name · turn time" for 5 s, with 26 confetti. Needs you: **Needs you** in red over the name, while waiting.
 
 ## Meetings (`checkMeetings`)
 

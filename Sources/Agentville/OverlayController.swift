@@ -155,11 +155,8 @@ final class CrewScene: SKScene {
                 let n = MemberNodes(); n.add(to: self); nodes[m.id] = n; return n
             }()
             let sc = m.scale, lift = m.z + m.hop
-            // Shadow: two stacked rows, narrower the higher it flies.
-            let k = min(1, max(0.35, 1 - (m.z + m.hop) / 160)), w = (6 * sc * k).rounded()
-            let rowH = max(1, sc.rounded())
-            Self.rect(n.shadow1, x: (m.x - w).rounded(), y: (m.y - sc * 0.5).rounded(), w: w * 2, h: rowH, H: H)
-            Self.rect(n.shadow2, x: (m.x - w + sc).rounded(), y: (m.y - sc * 1.3).rounded(), w: max(0, w * 2 - (2 * sc).rounded()), h: rowH, H: H)
+            Self.shadow(n.shadow1, n.shadow2, x: m.x, y: m.y, sc: sc, z: lift, H: H)
+            drawSidekick(m, n, H: H)
 
             let tex = textures.sprite(m.look, m.drawPose, frame: m.frame)
             if n.sprite.texture !== tex { n.sprite.texture = tex }
@@ -181,7 +178,7 @@ final class CrewScene: SKScene {
             }
 
             if let b = m.bubble {
-                let art = textures.bubble(b.text)
+                let art = textures.bubble(b)
                 if n.bubble.texture !== art.texture {
                     n.bubble.texture = art.texture
                     n.bubble.size = art.texture.size()
@@ -202,6 +199,38 @@ final class CrewScene: SKScene {
             nodes[id] = nil
         }
         drawParticles(sim.particles, scale: sim.stage.scale, H: H)
+    }
+
+    /// Port of `shadow`: two stacked rows, narrower the higher it flies.
+    private static func shadow(_ row1: SKSpriteNode, _ row2: SKSpriteNode, x: Double, y: Double, sc: Double, z: Double, H: CGFloat) {
+        let k = min(1, max(0.35, 1 - z / 160)), w = (6 * sc * k).rounded()
+        let rowH = max(1, sc.rounded())
+        rect(row1, x: (x - w).rounded(), y: (y - sc * 0.5).rounded(), w: w * 2, h: rowH, H: H)
+        rect(row2, x: (x - w + sc).rounded(), y: (y - sc * 1.3).rounded(), w: max(0, w * 2 - (2 * sc).rounded()), h: rowH, H: H)
+    }
+
+    /// The subagent mini-me (the sidekick part of `drawEnt`), one size smaller, behind its
+    /// character, with a count badge when several subagents run (open question 12's default).
+    @MainActor
+    private func drawSidekick(_ m: CrewMember, _ n: MemberNodes, H: CGFloat) {
+        let parts = [n.sideShadow1, n.sideShadow2, n.side, n.badge]
+        guard let side = m.side else { for p in parts { p.isHidden = true }; return }
+        for p in parts { p.isHidden = false }
+        let ss = max(1, m.scale - 1)
+        Self.shadow(n.sideShadow1, n.sideShadow2, x: side.x, y: side.y, sc: ss, z: 0, H: H)
+        let tex = textures.sprite(m.look, side.pose, frame: side.frame)
+        if n.side.texture !== tex { n.side.texture = tex }
+        n.side.xScale = CGFloat(side.face * ss)
+        n.side.yScale = CGFloat(ss)
+        n.side.position = CGPoint(x: side.x.rounded(), y: H - side.y.rounded())
+        n.side.zPosition = 2 + CGFloat(min(side.y, m.y)) / 100_000 - 0.000_001
+        if side.count > 1 {
+            let t = textures.badge(side.count)
+            if n.badge.texture !== t { n.badge.texture = t; n.badge.size = t.size() }
+            n.badge.position = CGPoint(x: side.x.rounded(), y: H - (side.y - 24 * ss - 2).rounded())
+        } else {
+            n.badge.isHidden = true
+        }
     }
 
     /// A top-left-anchored rect in sim coordinates.
@@ -242,6 +271,30 @@ final class CrewScene: SKScene {
                 node.alpha = CGFloat((1 - t) * 0.7)
                 node.size = CGSize(width: s, height: s)
                 node.position = CGPoint(x: (x - s / 2).rounded(.down), y: H - (y - s).rounded(.down))
+            case .confetti:
+                // A flake that flips between 1 and 2 cells wide as it flutters; fades in its last quarter.
+                let w = abs(sin(p.life * 10 + p.phase)) > 0.5 ? 2.0 : 1.0
+                node.texture = nil
+                node.color = Self.color(p.color)
+                node.colorBlendFactor = 1
+                node.alpha = CGFloat(t > 0.75 ? (1 - t) * 4 : 1)
+                node.size = CGSize(width: max(1, (w * S * 0.67).rounded(.down)), height: S)
+                node.position = CGPoint(x: x, y: H - y)
+            case .zzz:
+                let s = max(1, S - 1)
+                node.texture = textures.zee
+                node.color = Self.color(p.color)
+                node.colorBlendFactor = 1
+                node.alpha = CGFloat(1 - t)
+                node.size = CGSize(width: s * 3, height: s * 3)
+                node.position = CGPoint(x: x, y: H - y)
+            case .bit:
+                node.texture = nil
+                node.color = Self.color(p.color)
+                node.colorBlendFactor = 1
+                node.alpha = CGFloat(1 - t)
+                node.size = CGSize(width: S * 2, height: S)
+                node.position = CGPoint(x: x, y: H - y)
             }
         }
     }
@@ -250,27 +303,39 @@ final class CrewScene: SKScene {
         NSColor(srgbRed: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: 1)
     }
 
-    /// Shadows, the sprite, its emote and its speech bubble.
+    /// Shadows, the sprite, its sidekick, its emote and its speech bubble.
     @MainActor
     final class MemberNodes {
         let shadow1 = CrewScene.shadowNode(), shadow2 = CrewScene.shadowNode()
-        let sprite = SKSpriteNode()
+        let sprite = MemberNodes.spriteNode()
+        let sideShadow1 = CrewScene.shadowNode(), sideShadow2 = CrewScene.shadowNode()
+        let side = MemberNodes.spriteNode()
+        let badge = SKSpriteNode()
         let emote = SKSpriteNode()
         let bubble = SKSpriteNode()
+        private var all: [SKSpriteNode] { [shadow1, shadow2, sideShadow1, sideShadow2, side, sprite, badge, emote, bubble] }
+
+        /// Feet at pixel (AX, AY) from the top-left (prototype drawImage(img, −AX, −AY)).
+        static func spriteNode() -> SKSpriteNode {
+            let node = SKSpriteNode()
+            let a = SpriteRenderer.anchor, n = CGFloat(SpriteRenderer.size)
+            node.size = CGSize(width: n, height: n)
+            node.anchorPoint = CGPoint(x: CGFloat(a.x) / n, y: (n - CGFloat(a.y)) / n)
+            return node
+        }
 
         init() {
-            let a = SpriteRenderer.anchor, n = CGFloat(SpriteRenderer.size)
-            sprite.size = CGSize(width: n, height: n)
-            // Feet at pixel (AX, AY) from the top-left (prototype drawImage(img, −AX, −AY)).
-            sprite.anchorPoint = CGPoint(x: CGFloat(a.x) / n, y: (n - CGFloat(a.y)) / n)
             emote.size = CGSize(width: 9, height: 10)
             emote.anchorPoint = CGPoint(x: 0, y: 1)
             emote.zPosition = 3
+            badge.anchorPoint = CGPoint(x: 0.5, y: 0)
+            badge.zPosition = 3
             bubble.zPosition = 4
+            side.isHidden = true; badge.isHidden = true; sideShadow1.isHidden = true; sideShadow2.isHidden = true
         }
 
-        func add(to scene: SKScene) { for n in [shadow1, shadow2, sprite, emote, bubble] { scene.addChild(n) } }
-        func remove() { for n in [shadow1, shadow2, sprite, emote, bubble] { n.removeFromParent() } }
+        func add(to scene: SKScene) { for n in all { scene.addChild(n) } }
+        func remove() { for n in all { n.removeFromParent() } }
     }
 
     static func shadowNode() -> SKSpriteNode {
@@ -289,11 +354,19 @@ final class TextureCache {
     private let sprites = SpriteCache()
     private var spriteTextures: [Key: SKTexture] = [:]
     private var emoteTextures: [Emote: SKTexture] = [:]
-    private var bubbleTextures: [String: BubbleArt.Art] = [:]
+    private var bubbleTextures: [Bubble: BubbleArt.Art] = [:]
+    private var badgeTextures: [Int: SKTexture] = [:]
 
     let plus: SKTexture = {
         var c = PixelCanvas(width: 3, height: 3)
         c.fill(0, 1, 3, 1, RGB(0xFFFFFF)); c.fill(1, 0, 1, 3, RGB(0xFFFFFF))
+        return TextureCache.texture(c)
+    }()
+
+    /// Prototype `drawPattern(['##.', '.#.', '.##'])` for sleepers' z's.
+    let zee: SKTexture = {
+        var c = PixelCanvas(width: 3, height: 3)
+        c.fill(0, 0, 2, 1, RGB(0xFFFFFF)); c.fill(1, 1, 1, 1, RGB(0xFFFFFF)); c.fill(1, 2, 2, 1, RGB(0xFFFFFF))
         return TextureCache.texture(c)
     }()
 
@@ -319,12 +392,22 @@ final class TextureCache {
         return t
     }
 
-    func bubble(_ text: String) -> BubbleArt.Art {
-        if let a = bubbleTextures[text] { return a }
+    func bubble(_ b: Bubble) -> BubbleArt.Art {
+        var key = b
+        key.until = 0
+        if let a = bubbleTextures[key] { return a }
         if bubbleTextures.count > 64 { bubbleTextures.removeAll() }
-        let a = BubbleArt.make(text)
-        bubbleTextures[text] = a
+        let a = BubbleArt.make(b)
+        bubbleTextures[key] = a
         return a
+    }
+
+    func badge(_ n: Int) -> SKTexture {
+        if let t = badgeTextures[n] { return t }
+        if badgeTextures.count > 32 { badgeTextures.removeAll() }
+        let t = BubbleArt.badge(n)
+        badgeTextures[n] = t
+        return t
     }
 }
 
@@ -342,19 +425,28 @@ enum BubbleArt {
     /// Height below the box taken by the tail.
     static let tail: CGFloat = 10
 
-    static func make(_ text: String) -> Art {
-        let (image, box, pad) = draw(text)
+    static func make(_ b: Bubble) -> Art {
+        let (image, box, pad) = draw(b)
         let size = image.size
         return Art(texture: SKTexture(image: image),
                    anchor: CGPoint(x: (pad + box.width / 2) / size.width, y: (pad + tail) / size.height),
                    box: box)
     }
 
-    private static func draw(_ text: String) -> (NSImage, CGSize, CGFloat) {
-        let font = NSFont.systemFont(ofSize: 14, weight: .bold)
-        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: Theme.pixDark]
+    /// Title colours of `.bub.done .t` and `.bub.wait .t`.
+    static let doneInk = NSColor(srgbRed: 11 / 255, green: 122 / 255, blue: 62 / 255, alpha: 1)
+    static let waitInk = NSColor(srgbRed: 208 / 255, green: 16 / 255, blue: 62 / 255, alpha: 1)
+
+    private static func draw(_ b: Bubble) -> (NSImage, CGSize, CGFloat) {
+        let text = b.text
+        let ink: NSColor = switch b.kind { case .say: Theme.pixDark; case .done: doneInk; case .wait: waitInk }
+        let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: ink]
+        // `.bub .s`: 12 px at 80% opacity, under the title.
+        let subAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 12, weight: .medium),
+                                                       .foregroundColor: Theme.pixDark.withAlphaComponent(0.8)]
         let ts = (text as NSString).size(withAttributes: attrs)
-        let box = CGSize(width: ceil(ts.width) + 18, height: ceil(ts.height) + 11)
+        let ss = b.sub.map { ($0 as NSString).size(withAttributes: subAttrs) } ?? .zero
+        let box = CGSize(width: ceil(max(ts.width, ss.width)) + 18, height: ceil(ts.height) + ceil(ss.height) + 11)
         // Room for the ring (2) and the drop shadow (3 right, 4 down + 2 spread).
         let pad: CGFloat = 2, size = CGSize(width: box.width + pad * 2 + 5, height: box.height + pad * 2 + tail)
         let image = NSImage(size: size, flipped: true) { _ in
@@ -375,8 +467,29 @@ enum BubbleArt {
             Theme.pixDark.setFill()
             CGRect(x: cx - 2, y: boxRect.maxY + 6, width: 4, height: 2).fill()
             (text as NSString).draw(at: CGPoint(x: o.x + 9, y: o.y + 5), withAttributes: attrs)
+            if let sub = b.sub {
+                (sub as NSString).draw(at: CGPoint(x: o.x + 9, y: o.y + 5 + ceil(ts.height)), withAttributes: subAttrs)
+            }
             return true
         }
         return (image, box, pad)
+    }
+
+    /// The sidekick's count badge: a small yellow tag with an ink ring and the number of subagents.
+    static func badge(_ n: Int) -> SKTexture {
+        let label = "\(n)" as NSString
+        let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 10, weight: .heavy), .foregroundColor: Theme.pixDark]
+        let ts = label.size(withAttributes: attrs)
+        let box = CGSize(width: max(12, ceil(ts.width) + 6), height: ceil(ts.height) + 1)
+        let image = NSImage(size: CGSize(width: box.width + 4, height: box.height + 4), flipped: true) { _ in
+            let r = CGRect(x: 2, y: 2, width: box.width, height: box.height)
+            Theme.pixDark.setFill()
+            r.insetBy(dx: -2, dy: -2).fill()
+            NSColor(srgbRed: 1, green: 236 / 255, blue: 39 / 255, alpha: 1).setFill()
+            r.fill()
+            label.draw(at: CGPoint(x: r.midX - ts.width / 2, y: r.minY), withAttributes: attrs)
+            return true
+        }
+        return SKTexture(image: image)
     }
 }

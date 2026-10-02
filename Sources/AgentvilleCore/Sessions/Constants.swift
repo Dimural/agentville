@@ -82,11 +82,20 @@ public enum Motion {
     public static let cheer = 2.6
     /// Chance of a shout on release / recall.
     public static let releaseShoutChance = 0.35, recallShoutChance = 0.3
+    /// Done!: the bubble stays 5 s; 26 confetti (a quarter with reduced motion).
+    public static let doneBubble = 5.0, doneConfetti = 26
+    /// Meetings (`checkMeetings`): checked every 0.35 s; within 44 pt; stop for 1.6 s, cheering for
+    /// the first 0.8 s; then 18–30 s before meeting again (6–16 s at first).
+    public static let meetCheck = 0.35, meetDistance = 44.0, meet = 1.6, meetCheer = 0.8
+    public static let meetCooldown = 18.0...30.0, meetFirstCooldown = 6.0...16.0
+    /// A sidekick catches up at up to 140 pt/s.
+    public static let sidekickFollow = 140.0
 }
 
 /// What the crew says (docs/design/motion-and-behaviour.md#phrases).
 public enum Phrases {
     public static let release = ["Wheee!", "Freedom!", "Hi!", "Let's go!", "Stretch time"]
     public static let recall = ["Coming!", "Okay!", "Back to work!", "On my way"]
-    public static let hello = "Hello!", bye = "Bye!"
+    public static let meet = ["hi!", "nice commit", "lunch?", "high five!"]
+    public static let hello = "Hello!", bye = "Bye!", done = "Done!", needsYou = "Needs you"
 }

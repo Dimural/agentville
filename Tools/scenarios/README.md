@@ -20,3 +20,4 @@ swift run agentville-replay --generate burst --seconds 5 --rate 2000     # event
 | `long-bash.jsonl` | a 20-minute Bash command isn't pruned |
 | `silent.jsonl` | a killed terminal (no SessionEnd) is pruned |
 | `malformed.jsonl` | broken and hostile datagrams are dropped |
+| `desktop-tour.jsonl` | M4 on the desktop: every activity, a sidekick of 3, Done!, Needs you, a sleeper (release the crew first, or run the app with `--release-crew`) |
