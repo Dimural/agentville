@@ -44,6 +44,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+        // Dev and scripts/check-quit-cleanup.sh: `Agentville --release-crew` lets the crew out at
+        // launch; sessions that arrive later drop in.
+        if CommandLine.arguments.contains("--release-crew") {
+            DispatchQueue.main.async { [weak self] in MainActor.assumeIsolated { self?.toggleCrew() } }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

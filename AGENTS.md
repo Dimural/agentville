@@ -23,6 +23,7 @@ You are working on **Agentville**, a native macOS menu bar app. It turns every l
 | Privacy guard: no networking | `scripts/check-no-network.sh` |
 | Privacy guard: no stray disk writes | `scripts/check-no-disk-writes.sh` |
 | Footprint check (binary sizes) | `scripts/check-footprint.sh` |
+| Quit leaves nothing behind (needs a logged-in Mac; launches the app) | `scripts/check-quit-cleanup.sh` |
 | All checks CI runs | `scripts/ci.sh` |
 | Validate the Claude Code plugin | `claude plugin validate ./Plugin/agentville` and `claude plugin validate .` |
 | Send replay scenarios to a running app | `swift run agentville-replay Tools/scenarios/<name>.jsonl` |

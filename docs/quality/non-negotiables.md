@@ -7,7 +7,7 @@ Purpose: the 12 rules no change may break. Each is an acceptance criterion with 
 | **Clicks and recall** | | |
 | 1 | **Clicks always pass through** the crew unless ⌥ is held *and* the press lands on a character. Buttons, text fields, scrolling, drag-and-drop and window resizing underneath work as if the crew weren't there. | Manual (release checklist §Overlay); `InputPoller` unit tests for the decision function |
 | 2 | **Recall always works within 3 s** from any state: mid-drag, mid-throw, window hidden, 100 sessions, a walk-on in progress. | Replay scenario + manual; overlay unit test on the force-complete timer |
-| 3 | **Quitting leaves nothing behind.** No overlay, no helper process, no socket file in use. | Manual + `scripts/check-quit-cleanup.sh` (M3) |
+| 3 | **Quitting leaves nothing behind.** No overlay, no helper process, no socket file in use. | Manual + `scripts/check-quit-cleanup.sh` (local, needs a GUI session) |
 | **Claude Code must not be affected** | | |
 | 4 | **The hook never affects Claude Code.** It always exits 0, never writes stdout, finishes < 50 ms p99 with the app running and < 10 ms with it absent, and stays silent when the app is deleted. | `Tests/HookIntegrationTests` (exit code, stdout, timing, absent app, deleted helper) |
 | 5 | **Sessions behave identically** with Agentville installed, running, quit or deleted. | Release checklist §Real-world |

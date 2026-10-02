@@ -30,7 +30,7 @@ Purpose: everything verified by hand before a release. Copy this into the releas
 
 - [ ] No permission prompt at any point on a fresh account
 - [ ] `codesign -d --entitlements :- Agentville.app` shows no network entitlements
-- [ ] After quit: no Agentville process, no socket file (`ls $(getconf DARWIN_USER_TEMP_DIR)agentville.sock`)
+- [ ] After quit: no Agentville process, no socket file (`ls $(getconf DARWIN_USER_TEMP_DIR)agentville.sock`); `scripts/check-quit-cleanup.sh` passes
 - [ ] After Disconnect + delete: `~/.claude` matches the pre-install state; only the prefs plist remains
 
 ## Visual
