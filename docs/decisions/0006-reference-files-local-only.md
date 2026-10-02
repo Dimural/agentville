@@ -10,5 +10,5 @@ Both files are gitignored by exact name at the repo root. Their content is diges
 
 ## Consequences
 - A fresh clone can build and test everything from `docs/` and the fixtures.
-- Golden image tests (M2) will commit exported PNG fixtures, not the prototype itself.
+- Golden image tests commit fixtures exported from the prototype (`Tools/fixtures/export-sprites.mjs` → `sprite-vectors.json`, palette-indexed text rows rather than PNGs so failures diff as ASCII art), never the prototype itself. The export script reads the local file at run time and contains none of its code.
 - Agents must never `git add -f` these files.

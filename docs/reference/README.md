@@ -16,8 +16,8 @@ Everything is in one `<script>` block. Search for these names:
 | Area | Prototype names | Agentville home |
 |---|---|---|
 | Looks | `lookFor`, `hash`, `rng`, `SKIN` `HAIR` `SHIRT` `PANTS` `SHOES` `STYLES` `ACCS`, `shade`, `mix` | `Sources/AgentvilleCore/Looks/` (ported, golden-tested) |
-| Sprites | `drawChar(g, L, pose, f)`, `sprite()`, `outline()` | `Looks/` pixel renderer (M2) |
-| Emotes | `ICON`, `drawPattern`, `drawEmote` | renderer (M2) |
+| Sprites | `drawChar(g, L, pose, f)`, `sprite()`, `outline()`, `avatar()` | `Looks/SpriteRenderer.swift`, `PixelCanvas.swift` (ported, golden-tested) |
+| Emotes | `ICON`, `drawPattern`, `drawEmote` | `SpriteRenderer.emote` (ported, golden-tested) |
 | Office | `drawOffice`, `screenFor`, `deskUnits`, `DESKS` | app desk window (M2) |
 | Behaviour | `class Ent`, `updateEnt`, `roam`, `roamCrowd`, `checkMeetings`, `settle` | app overlay (M4) |
 | Release / recall | `release`, `recall`, `spawnFromHome`, `sendHome`, `homePos`, `callEveryoneBack` | app overlay (M3) |
@@ -42,3 +42,5 @@ The "What the app receives" feed is worth keeping as an optional, in-memory-only
 ## How to regenerate fixtures from the prototype
 
 Look vectors were produced by evaluating the prototype's own `hash`, `rng`, `shade`, `mix` and `lookFor` functions in Node, over a fixed list of folder names. To regenerate, extract those functions from `Pixel Crew.html` and dump `lookFor(name)` (minus `id` and `name`) for each name in the fixture. Never edit the fixture by hand.
+
+Sprite and emote frames: run `node Tools/fixtures/export-sprites.mjs` (needs Node and Google Chrome). It lifts the prototype's utils/looks/sprites section out of `Pixel Crew.html` at run time, runs it unmodified in headless Chrome, and rewrites `Tests/AgentvilleCoreTests/Fixtures/sprite-vectors.json`. The output is deterministic: rerunning it on an unchanged prototype gives a byte-identical file.

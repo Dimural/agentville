@@ -40,6 +40,16 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] Owner checks a replayed scenario in the debug window: 2026-10-01, `demo-mix` final state matched every `expect` line (5 sessions, 18 events received, 0 dropped)
 - [x] Owner checks a real Claude Code session in the debug window: 2026-10-01, plugin installed from the local marketplace + `scripts/dev-link-hook.sh`; owner confirmed the states looked right
 
+## M2: menu bar + desk window
+
+- [x] Sprite renderer port (`drawChar`, `sprite`, `outline`, `avatar`, `drawEmote`) with golden frames exported from the prototype: `SpriteRendererTests`
+- [x] Bounded sprite cache (`SpriteCache`, LRU 2,000)
+- [ ] `PixelCanvas` → `CGImage` in the app, nearest-neighbour, integer scales
+- [ ] Office renderer port (`drawOffice`, `screenFor`, `deskUnits`): day/night, 6 desks, 9 monitor screens, "+N more below"; golden office frames
+- [ ] Desk window: office (≈12 fps, stops when hidden) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list
+- [ ] Status item: pixel head, count, red dot when anything needs you
+- [ ] Owner's side-by-side review against the prototype with replayed sessions
+
 ## Later milestones
 
 Detailed checklists are written at the start of each milestone, using the per-area lists in [success-checklists.md](../quality/success-checklists.md).

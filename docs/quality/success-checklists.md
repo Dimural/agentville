@@ -46,8 +46,8 @@ Purpose: concrete, tickable definitions of success for the whole platform and ea
 
 ## Looks and sprites
 
-- [ ] Looks match the prototype's golden vectors exactly
-- [ ] Every pose/frame renders pixel-identical to prototype exports
+- [x] Looks match the prototype's golden vectors exactly: `LookGeneratorTests`
+- [x] Every pose/frame renders pixel-identical to prototype exports: `SpriteRendererTests` (19 looks: every style × accessory, all 4 patterns; 741 frames + 8 emotes from `sprite-vectors.json`)
 - [ ] Nearest-neighbour everywhere; integer scales only
 
 ## Menu bar and desk window

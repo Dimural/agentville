@@ -81,8 +81,12 @@ dots   animated: floor(t*3) % 4 dots
 
 The list avatar is the `idle` frame 0 sprite, cropping source rect (5, 1, 13, 14), drawn at 2× (26×28).
 
+## Code
+
+`Sources/AgentvilleCore/Looks/`: `PixelCanvas` (fill, clear, translate, `outline`, crop), `SpriteRenderer` (`render` = `sprite`, `avatar`, `emote` = `drawEmote` at scale 1), `Pose` (with `frameCount`), `Emote`, `SpriteCache`. Converting a `PixelCanvas` to `CGImage`/`SKTexture` and scaling (nearest-neighbour, integer) happens in the app.
+
 ## Done when
 
-- [ ] `LookGenerator` matches `look-vectors.json` exactly (all names, including Unicode and empty)
-- [ ] Every pose × frame × style × accessory renders pixel-identical to the prototype (golden PNGs exported from the prototype, M2)
-- [ ] Sprite cache is bounded (LRU, about 2,000 entries)
+- [x] `LookGenerator` matches `look-vectors.json` exactly (all names, including Unicode and empty): `LookGeneratorTests`
+- [x] Every pose × frame × style × accessory renders pixel-identical to the prototype: `SpriteRendererTests` (19 looks: every style × accessory, all 4 patterns; 741 frames + 8 emotes from `sprite-vectors.json`). Frames are exported from the prototype's own code on a real browser canvas and stored as palette-indexed text rows, so a failure prints an ASCII diff
+- [x] Sprite cache is bounded (LRU, `Limits.spriteCache` = 2,000 entries): `SpriteCache`, tested in `SpriteRendererTests`

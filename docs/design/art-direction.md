@@ -49,6 +49,6 @@ Bubbles clamp inside the screen, sit above the emote, and fade with the characte
 
 ## Done when
 
-- [ ] Every sprite renders pixel-exact to the prototype (golden tests, M2)
+- [x] Every sprite renders pixel-exact to the prototype: `SpriteRendererTests` (19 looks: every style × accessory, all 4 patterns; 741 frames + 8 emotes from `sprite-vectors.json`)
 - [ ] No blurry scaling anywhere at any display scale (manual check on 1× and 2× displays)
 - [ ] `THIRD_PARTY.md` lists every bundled asset that isn't ours (font only)

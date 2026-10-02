@@ -47,6 +47,7 @@ Tests/                       Swift Testing suites + fixtures
 Plugin/agentville/           the Claude Code plugin (manifest + hooks/hooks.json)
 .claude-plugin/              marketplace.json so this repo is installable as a marketplace
 Tools/scenarios/             replay scenarios (.jsonl)
+Tools/fixtures/              golden-fixture exporters (run the local prototype in headless Chrome)
 scripts/                     build/test/guard scripts (all CI logic lives here)
 docs/                        all specs, decisions, checklists
 .claude/settings.json        project permissions for agents (repo scripts allowed; `git add -f` denied)

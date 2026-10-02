@@ -21,6 +21,8 @@ public enum Limits {
     public static let diagnosticsLines = 200
     /// Max events the socket listener hands to the store at once; the rest follow in the next batch.
     public static let listenerBatch = 1024
+    /// Rendered sprite frames kept in `SpriteCache` (LRU).
+    public static let spriteCache = 2000
     /// Max rows the M1 debug window lists (the store itself is capped at `trackedSessions`).
     public static let debugListRows = 200
 }
