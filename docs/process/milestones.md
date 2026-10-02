@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M1** (data path), built; replay checked by the owner, a real-session check remains. M0 is done apart from the owner's answers. Next: M2.
+**Current milestone: M2** (menu bar + desk window; sprite renderer port). M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -38,7 +38,7 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] `agentville-replay` + all scenarios in [testing-strategy.md](../quality/testing-strategy.md#replay-scenarios-m1) (scenarios are executable specs)
 - [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D)
 - [x] Owner checks a replayed scenario in the debug window: 2026-10-01, `demo-mix` final state matched every `expect` line (5 sessions, 18 events received, 0 dropped)
-- [ ] Owner checks a real Claude Code session in the debug window (plugin installed + `scripts/dev-link-hook.sh`)
+- [x] Owner checks a real Claude Code session in the debug window: 2026-10-01, plugin installed from the local marketplace + `scripts/dev-link-hook.sh`; owner confirmed the states looked right
 
 ## Later milestones
 
