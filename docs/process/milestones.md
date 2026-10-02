@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M1** (data path), built and awaiting the owner's look at the debug window. M0 is done apart from the owner's answers. Next: M2.
+**Current milestone: M1** (data path), built; replay checked by the owner, a real-session check remains. M0 is done apart from the owner's answers. Next: M2.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -37,7 +37,8 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] `SocketListener` in the app (bind, batch, unlink on quit): `SocketListenerTests` (real socket: order, drops, re-sanitize, burst batching, socket → store equals direct apply, unlink only our own file). Manual 2026-10-01: replay `demo-mix` and a 1,080-event burst all accepted; quit by SIGTERM/SIGINT leaves no socket file; 0.00 s CPU over 30 s idle
 - [x] `agentville-replay` + all scenarios in [testing-strategy.md](../quality/testing-strategy.md#replay-scenarios-m1) (scenarios are executable specs)
 - [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D)
-- [ ] Owner eyeballs replayed scenarios and a real session (`scripts/dev-link-hook.sh`) in the debug window
+- [x] Owner checks a replayed scenario in the debug window: 2026-10-01, `demo-mix` final state matched every `expect` line (5 sessions, 18 events received, 0 dropped)
+- [ ] Owner checks a real Claude Code session in the debug window (plugin installed + `scripts/dev-link-hook.sh`)
 
 ## Later milestones
 
