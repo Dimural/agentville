@@ -32,9 +32,12 @@ The menu header shows "N sessions".
 
 **The session list**, one row per session:
 - avatar (the head cropped from the sprite, at 2×)
-- project folder name, plus the current tool in small mono text (and "+ subagent")
+- project folder name, with a small number badge for twins (2, 3…), plus the current tool in small mono text while working (and "+ subagent", or "+ N subagents" when there are several)
 - status chip: **Editing, Reading, Running, Searching, On the web, Thinking, Needs you, Finished, Idle** (plus **Error** and **Planning / Tinkering** for the new states)
-- elapsed time for the current turn (`4m 15s`), or the duration of the last turn when Finished
+- elapsed time for the current turn (`4m 15s`, also while it needs you), or the duration of the last turn when Finished
+- a **Needs you** row has a red chip whose square blinks, and the tooltip "Answer it in your terminal" (the prototype's "Answer" button is gone: open question 11)
+
+Code: `DeskList` (Core) produces each row, the summary line and the menu header; `DeskListTests`.
 
 **Footer:** the chunky **Release the crew** button (orange, with a gentle "invite" bounce until first use). Once released it turns blue and reads **Call the crew back**. Next to it is a `⌃⌥C toggles` hint.
 
