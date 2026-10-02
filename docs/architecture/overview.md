@@ -31,9 +31,9 @@ Plus a dev-only fifth part: **`agentville-replay`** sends scripted `WireEvent`s 
 
 ```
 AgentvilleWire   (Foundation/Darwin only) HookPayloadFilter, Sanitize, WireEvent, WireCodec, SocketPath, DatagramSocket
-AgentvilleCore   (no AppKit, no global state, 100% unit-testable; re-exports AgentvilleWire)
+AgentvilleCore   (no AppKit, no global state, 100% unit-testable; re-exports AgentvilleWire; CoreGraphics only for PixelImage)
    ├── Sessions   ActivityMapping, SessionStore, Session, StoreEffect, Scenario, Constants
-   ├── Looks      LookHash (hash + rng), RGB, Palette, Look, LookGenerator, PixelCanvas, SpriteRenderer, SpriteCache, OfficeRenderer
+   ├── Looks      LookHash (hash + rng), RGB, Palette, Look, LookGenerator, PixelCanvas, PixelImage, SpriteRenderer, SpriteCache, OfficeRenderer
    └── Transport  SocketListener (the app's receiving end: bind, drain, decode, batch, clean unlink)
 agentville-hook  → AgentvilleWire only. Tiny (≈150 KB); must start fast.
 agentville-replay→ AgentvilleCore
