@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: StatusItemController?
     private var deskPanel: DeskPanelController?
+    private var overlay: OverlayController?
     private var tickTimer: Timer?
     /// SIGTERM/SIGINT (`kill`, Ctrl-C) become a normal quit, so the socket file is removed then too.
     private var signalSources: [DispatchSourceSignal] = []
@@ -49,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Nothing survives quit (non-negotiable #3): close the socket and remove its file.
         listener?.stop()
         tickTimer?.invalidate()
+        overlay?.close()
         deskPanel?.close()
         statusItem?.remove()
     }
@@ -75,14 +77,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func ingest(_ batch: [WireEvent]) {
         let now = Self.now()
+        let before = store.order
         for e in batch { store.apply(e, now: now) }
-        // Effects (walk-ons, cheers) are consumed from M2 on; for now the UI just reflects state.
+        // Walk-ons and cheers (store effects) are consumed in M4/M6; for now the UI reflects state.
+        if store.order != before { overlay?.sessionsChanged(store.ordered) }
         scheduleRefresh()
     }
 
     private func tick() {
-        let before = store.revision
+        let before = store.revision, order = store.order
         store.tick(now: Self.now())
+        if store.order != order { overlay?.sessionsChanged(store.ordered) }
         if store.revision != before { scheduleRefresh() }
     }
 
@@ -108,6 +113,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 p.setPinned(!p.pinned)
                 if p.pinned, !p.isVisible { p.show() }
             })
+        statusItem?.onToggleCrew = { [weak self] in self?.toggleCrew() }
+        statusItem?.isReleased = { [weak self] in self?.overlay?.sim.released ?? false }
     }
 
     private func refreshStatusItem() {
@@ -121,7 +128,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                     anchor: { [weak self] in self?.statusItem?.anchor },
                                     moreMenu: { [weak self] in self?.statusItem?.moreMenu ?? NSMenu() })
         p.onVisibilityChange = { [weak self] open in self?.statusItem?.setPanelOpen(open) }
+        p.away = { [weak self] in self?.overlay?.sim.awayIDs ?? [] }
+        p.onToggleCrew = { [weak self] in self?.toggleCrew() }
         deskPanel = p
         return p
+    }
+
+    // MARK: - The crew (docs/product/user-experience.md#releasing-the-crew)
+
+    /// Built on first release; asleep (paused, off screen) whenever the crew is home.
+    private func crew() -> OverlayController {
+        if let o = overlay { return o }
+        let o = OverlayController()
+        o.sessions = { [weak self] in self?.store.sessions ?? [:] }
+        o.sim.home = { [weak self, weak o] id in
+            guard let self, let o else { return Home(x: 0, y: 0, scale: 1) }
+            return self.home(for: id, overlay: o)
+        }
+        o.onEvent = { [weak self] e in if e == .gulp { self?.deskPanel?.gulp() } }
+        overlay = o
+        return o
+    }
+
+    private func toggleCrew() {
+        let o = crew(), p = panel()
+        if o.sim.released {
+            o.recall()
+        } else {
+            // Like the prototype: the crew pours out of the desk panel, so open it first.
+            if !p.isVisible { p.show() }
+            if o.release(store.ordered).contains(.burp) { p.burp() }
+        }
+        p.setReleased(o.sim.released)
+    }
+
+    /// Port of `homePos`: the session's desk while the panel is open (the list for sessions
+    /// without a desk), otherwise the menu bar icon, drawn smaller.
+    private func home(for id: String, overlay o: OverlayController) -> Home {
+        if let p = deskPanel, p.isVisible {
+            let i = store.order.firstIndex(of: id) ?? Int.max
+            if let pt = p.deskFeet(i) ?? p.listAnchor {
+                let s = o.simPoint(pt)
+                return Home(x: s.x, y: s.y, scale: 2)
+            }
+        }
+        if let pt = statusItem?.iconHome {
+            let s = o.simPoint(pt)
+            return Home(x: s.x, y: s.y, scale: 1)
+        }
+        return Home(x: o.sim.stage.width - 80, y: 0, scale: 1)
     }
 }

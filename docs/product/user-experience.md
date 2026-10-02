@@ -41,7 +41,7 @@ A dropdown under the menu bar icon, like Wi-Fi or Control Center: rounded, no ti
 
 Code: `DeskList` (Core) produces each row, the summary line and the menu header; `DeskListTests`.
 
-**Footer:** a pin and a "⋯" (more) button on the right. From M3, the chunky **Release the crew** button (orange, with a gentle "invite" bounce until first use). Once released it turns blue and reads **Call the crew back**. Next to it is a `⌃⌥C toggles` hint.
+**Footer:** a pin and a "⋯" (more) button on the right, and on the left the chunky **Release the crew** button (orange, with a gentle "invite" bounce until first use). Once released it turns blue and reads **Call the crew back**. Next to it is a `⌃⌥C toggles` hint.
 
 The list re-renders **at most 4× per second**, however many events arrive.
 
@@ -62,7 +62,7 @@ At most **3 walk-ons at once** (2 on screens narrower than 900 pt, 1 below 560 p
 
 ## Releasing the crew
 
-Triggered by the button, the menu item or ⌃⌥C:
+Triggered by the button, the menu item or ⌃⌥C (from M5). If the desk panel is closed it opens first, so the crew pours out of it:
 
 1. The desk panel **burps** (when open): squash-and-stretch plus a burst of sparkles.
 2. One by one (first at 120 ms, then 85 ms apart), each character **leaps out of its desk** in an arc, stretched in flight with a sparkle trail.

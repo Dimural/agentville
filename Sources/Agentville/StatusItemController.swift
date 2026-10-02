@@ -11,6 +11,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let menu = NSMenu()
     private let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let keepOpen = NSMenuItem(title: "Keep Panel Open", action: nil, keyEquivalent: "")
+    private let crewItem = NSMenuItem(title: "Release the crew", action: nil, keyEquivalent: "")
+    /// Release / call back, and whether the crew is out (for the item's title).
+    var onToggleCrew: (() -> Void)?
+    var isReleased: () -> Bool = { false }
     private let dot = CALayer()
     private var needsYou = false
     private let onTogglePanel: () -> Void
@@ -41,6 +45,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         header.isEnabled = false
         menu.addItem(header)
         menu.addItem(.separator())
+        crewItem.target = self
+        crewItem.action = #selector(toggleCrew)
+        menu.addItem(crewItem)
         keepOpen.target = self
         keepOpen.action = #selector(togglePin)
         menu.addItem(keepOpen)
@@ -122,6 +129,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     func menuWillOpen(_ menu: NSMenu) {
         keepOpen.state = isPinned() ? .on : .off
+        crewItem.title = isReleased() ? "Call the crew back" : "Release the crew"
+    }
+
+    @objc private func toggleCrew() { onToggleCrew?() }
+
+    /// Where the crew flies when the desk panel is closed: just under the icon (prototype `menuIconPos`).
+    var iconHome: CGPoint? {
+        guard let a = anchor else { return nil }
+        return CGPoint(x: a.icon.minX + 14, y: a.icon.minY)
     }
 
     @objc private func togglePin() { onTogglePin() }

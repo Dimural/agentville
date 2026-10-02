@@ -24,6 +24,8 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     private let table = NSTableView()
     private let pinButton = NSButton()
     private let moreButton = NSButton()
+    private let releaseButton = ReleaseButton()
+    private let content = WindowBackground()
     private var rows: [DeskList.Row] = []
     private var officeTimer: Timer?
     private var listTimer: Timer?
@@ -36,6 +38,10 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     /// Where the icon is (screen rect) and which screen's visible frame to stay inside.
     private let anchor: () -> (icon: CGRect, screen: CGRect)?
     private let moreMenu: () -> NSMenu
+    /// Sessions whose characters are out on the desktop: their desks are empty.
+    var away: () -> Set<String> = { [] }
+    /// The Release / Call back button.
+    var onToggleCrew: (() -> Void)?
     /// Tells the status item to show its pressed state while the panel is open.
     var onVisibilityChange: ((Bool) -> Void)?
 
@@ -43,7 +49,10 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     static let officeSize = NSSize(width: OfficeRenderer.pixelSize.width, height: OfficeRenderer.pixelSize.height)
     static let rowHeight: CGFloat = 38
     static let summaryHeight: CGFloat = 33
-    static let footerHeight: CGFloat = 34
+    /// `.winfoot`: padding 10 12 12 around the chunky button.
+    static let footerHeight: CGFloat = 63
+    /// Transparent room around the panel so the burp's overshoot isn't clipped.
+    static let margin: CGFloat = 14
     /// Four rows show at once; more scroll (the prototype's list scrolls too).
     static let size = NSSize(width: officeSize.width,
                              height: officeSize.height + summaryHeight + 1 + 4 * rowHeight + 1 + footerHeight)
@@ -54,7 +63,7 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
         self.app = app
         self.anchor = anchor
         self.moreMenu = moreMenu
-        panel = DeskPanel(contentRect: NSRect(origin: .zero, size: Self.size),
+        panel = DeskPanel(contentRect: NSRect(origin: .zero, size: NSSize(width: Self.size.width + 2 * Self.margin, height: Self.size.height + 2 * Self.margin)),
                           styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
         super.init()
         panel.isReleasedWhenClosed = false
@@ -113,7 +122,8 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
 
     private func place() {
         guard let a = anchor() else { panel.center(); return }
-        panel.setFrame(PanelPlacement.frame(size: Self.size, under: a.icon, screen: a.screen), display: false)
+        let f = PanelPlacement.frame(size: Self.size, under: a.icon, screen: a.screen)
+        panel.setFrame(f.insetBy(dx: -Self.margin, dy: -Self.margin), display: false)
     }
 
     /// Clicks in other apps fold the panel away. A global mouse monitor needs no permission (only
@@ -128,6 +138,56 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
             NSEvent.removeMonitor(m)
             outsideClicks = nil
         }
+    }
+
+    // MARK: - The crew
+
+    func setReleased(_ on: Bool) { releaseButton.setReleased(on) }
+
+    /// Screen point of desk `i`'s feet (where a character sits), while the panel is open.
+    func deskFeet(_ i: Int) -> CGPoint? {
+        guard panel.isVisible, i < Limits.desks else { return nil }
+        let d = OfficeRenderer.deskUnits(i)
+        let p = office.convert(CGPoint(x: d.fx * 2, y: d.fy * 2), to: nil)
+        return panel.convertPoint(toScreen: p)
+    }
+
+    /// Screen point for sessions without a desk: the top of the list (prototype `homePos`).
+    var listAnchor: CGPoint? {
+        guard panel.isVisible else { return nil }
+        let p = office.convert(CGPoint(x: office.bounds.midX, y: office.bounds.maxY + Self.summaryHeight + 30), to: nil)
+        return panel.convertPoint(toScreen: p)
+    }
+
+    /// The window burps as the crew pours out: 0.55 s, overshoot easing (port of `@keyframes burp`).
+    func burp() {
+        animate(key: "burp", duration: 0.55, times: [0, 0.25, 0.55, 1],
+                values: [(1, 1, 0), (1.035, 0.965, 0), (0.985, 1.02, 4), (1, 1, 0)],
+                timing: CAMediaTimingFunction(controlPoints: 0.3, 1.6, 0.5, 1))
+    }
+
+    /// The window gulps when the last one is home: 0.35 s ease-out (port of `@keyframes gulp`).
+    func gulp() {
+        animate(key: "gulp", duration: 0.35, times: [0, 0.4, 1],
+                values: [(1, 1, 0), (1.02, 1.02, 0), (1, 1, 0)],
+                timing: CAMediaTimingFunction(name: .easeOut))
+    }
+
+    /// Scales about the panel's centre; `lift` moves it up (CSS translateY(−4)).
+    private func animate(key: String, duration: Double, times: [Double], values: [(CGFloat, CGFloat, CGFloat)],
+                         timing: CAMediaTimingFunction) {
+        guard panel.isVisible, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion, let layer = content.layer else { return }
+        let c = CGPoint(x: content.bounds.midX, y: content.bounds.midY)
+        let a = CAKeyframeAnimation(keyPath: "transform")
+        a.values = values.map { sx, sy, lift in
+            var t = CATransform3DMakeTranslation(c.x, c.y + lift, 0)
+            t = CATransform3DScale(t, sx, sy, 1)
+            return NSValue(caTransform3D: CATransform3DTranslate(t, -c.x, -c.y, 0))
+        }
+        a.keyTimes = times.map { NSNumber(value: $0) }
+        a.timingFunctions = Array(repeating: timing, count: times.count - 1)
+        a.duration = duration
+        layer.add(a, forKey: key)
     }
 
     // MARK: - NSWindowDelegate
@@ -193,7 +253,7 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     private func drawOffice() {
         let sessions = app.store.ordered
         let clock = Calendar.current.dateComponents([.hour, .minute], from: Date())
-        let scene = OfficeScene(sessions: sessions, night: Theme.isDark(office),
+        let scene = OfficeScene(sessions: sessions, awayIDs: away(), night: Theme.isDark(office),
                                 clock: (clock.hour ?? 0, clock.minute ?? 0))
         office.pixels.image = PixelImage.cgImage(OfficeRenderer.render(scene, t: AppDelegate.now(), cache: sprites))
         office.update(moreBelow: scene.moreBelow,
@@ -316,15 +376,16 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
         moreButton.toolTip = "More"
         setPinned(false)
 
+        releaseButton.onPress = { [weak self] in self?.onToggleCrew?() }
+
         // Rounded like Control Center's panels; the clear window shadow follows the corners.
-        let content = WindowBackground()
         content.wantsLayer = true
         content.layer?.cornerRadius = 10
         content.layer?.cornerCurve = .continuous
         content.layer?.masksToBounds = true
         content.layer?.borderWidth = 1
         content.layer?.borderColor = NSColor(white: 0.5, alpha: 0.25).cgColor
-        for v in [office, summary, rule, scroll, footRule, pinButton, moreButton] as [NSView] {
+        for v in [office, summary, rule, scroll, footRule, releaseButton, pinButton, moreButton] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
@@ -351,6 +412,8 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
             footRule.trailingAnchor.constraint(equalTo: content.trailingAnchor),
             footRule.heightAnchor.constraint(equalToConstant: 1),
             footRule.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.footerHeight),
+            releaseButton.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
+            releaseButton.topAnchor.constraint(equalTo: footRule.bottomAnchor, constant: 10),
             moreButton.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -10),
             moreButton.centerYAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.footerHeight / 2),
             moreButton.widthAnchor.constraint(equalToConstant: 24),
@@ -360,7 +423,12 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
             pinButton.widthAnchor.constraint(equalToConstant: 24),
             pinButton.heightAnchor.constraint(equalToConstant: 24),
         ])
-        panel.contentView = content
+        let container = NSView(frame: NSRect(origin: .zero, size: panel.frame.size))
+        content.frame = container.bounds.insetBy(dx: Self.margin, dy: Self.margin)
+        content.translatesAutoresizingMaskIntoConstraints = true
+        content.autoresizingMask = [.width, .height]
+        container.addSubview(content)
+        panel.contentView = container
     }
 
     private static func rule() -> NSBox {
