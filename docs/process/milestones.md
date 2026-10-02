@@ -53,7 +53,7 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 
 ## M3: overlay, release and recall
 
-Scope: the crew pours out of the desk panel onto the desktop and gets sucked back, exactly as in the prototype. On the desktop each character plays its session's pose **in place**; walking, meetings, sidekicks and the rest of the particles are M4. Grabbing, hover fade, the HUD and ⌃⌥C are M5. "Invite until first use" is per launch until settings are stored (M7). One display (the one with the menu bar) until M8.
+Scope: the crew pours out of the desk panel onto the desktop and gets sucked back, exactly as in the prototype. On the desktop each character acts out its session and wanders between acts (roaming, pulled forward from M4); meetings, sidekicks and the rest of the particles are M4. Grabbing, hover fade, the HUD and ⌃⌥C are M5. "Invite until first use" is per launch until settings are stored (M7). One display (the one with the menu bar) until M8.
 
 - [x] `CrewSim` (Core): a pure, seeded simulation of the crew on the desktop. Ports of `release`, `recall`, `sendHome`, `spawnFromHome`, `Ent.launch`/`land`, the `fly`/`wait`/`drop`/`leave` modes of `updateEnt`, and the sparkle/dust/trail particles (cap 520). `CrewSimTests`: stagger timings, flight arc and stretch, landing squash and dust, ≤ 12 out, release/recall shouts, new and ended sessions while out, idle when everyone is home
 - [x] Recall rules (non-negotiable #2): everything home or removed ≤ 2.6 s from every state (mid-release, mid-flight, 100 sessions, panel closed, sessions ending): `CrewSimTests`
@@ -61,6 +61,7 @@ Scope: the crew pours out of the desk panel onto the desktop and gets sucked bac
 - [x] Overlay rendering: nearest-neighbour sprite textures, shadows, particles, emotes and speech bubbles; draw order shadows → particles → sprites (by y) → emotes → bubbles
 - [x] Desk panel footer: the chunky **Release the crew** button (orange, invite bounce until first use) that turns blue and reads **Call the crew back**; the same item in the status menu; burp on release, gulp when the last one is home; empty desks while the crew is out
 - [x] Homes: desks while the panel is open, otherwise the menu bar icon. 2026-10-02: in-app snapshots during `demo-mix` checked: the crew leaves the desks, lands spread over the screen in its poses with emotes and shadows, and is home with the desktop empty 2 s after recall
+- [x] Pulled forward from M4 at the owner's request (2026-10-02): **roaming**. Port of `roam`, `walkTo`, `nearbyTarget`: act 3–7 s (idle 6–12 s), then walk to a nearby spot at 48 pt/s (search creep 26, idle stroll 32); "needs you" runs to the bottom of the screen at 120 pt/s and waves; a finished turn cheers for 2.6 s first. `CrewSimTests` (speeds, bounds over 2 minutes with 12 out, poses). Meetings, sidekicks and activity particles stay in M4
 - [ ] Manual: click-through over real apps (buttons, text, scroll, drag-and-drop, resize); quit with the crew out leaves nothing
 - [ ] Owner's side-by-side review of release and recall against the prototype
 

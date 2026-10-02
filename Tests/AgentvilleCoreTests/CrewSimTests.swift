@@ -93,18 +93,19 @@ struct CrewSimTests {
         #expect(f.to.x >= 40 && f.to.x <= Self.stage.width - 40)
     }
 
-    @Test("At rest, each plays its session's pose in place")
+    @Test("On the desktop, each acts out its session")
     func restPoses() throws {
         let store = Self.sessions(1, tool: "Bash"), sim = Self.sim(store)
         sim.release(store.ordered)
-        Self.run(sim, store, until: 2)
-        #expect(sim.members["s0"]?.pose == .bash)
+        var poses: Set<Pose> = []
+        while sim.time < 10 { Self.run(sim, store, until: sim.time + 0.1); poses.insert(sim.members["s0"]?.pose ?? .idle) }
+        #expect(poses.contains(.bash))
         store.apply(WireEvent(event: .permissionRequest, session: "s0", project: "p0", tool: "Bash", notification: nil, agentId: nil, source: nil, ts: 0), now: 1)
-        Self.run(sim, store, until: 2.1)
+        Self.run(sim, store, until: 20)
         #expect(sim.members["s0"]?.pose == .wave)
         #expect(sim.members["s0"]?.emote == .icon(.bang))
         store.apply(WireEvent(event: .stop, session: "s0", project: "p0", tool: nil, notification: nil, agentId: nil, source: nil, ts: 0), now: 2)
-        Self.run(sim, store, until: 2.2)
+        Self.run(sim, store, until: 20.2)
         #expect(sim.members["s0"]?.pose == .cheer)
         #expect(sim.members["s0"]?.emote == .icon(.check))
     }
@@ -221,5 +222,115 @@ struct CrewSimTests {
         sim.recall()
         Self.run(sim, store, until: 6)
         #expect(sim.isIdle)
+    }
+
+    // MARK: - Roaming (port of roam, walkTo, nearbyTarget)
+
+    /// Median of the moving samples: the < 2 pt arrival snap (from `walkTo`) can't skew it.
+    static func median(_ v: [Double]) -> Double {
+        let m = v.filter { $0 > 1 }.sorted()
+        return m.isEmpty ? 0 : m[m.count / 2]
+    }
+
+    static func ev(_ k: WireEvent.Kind, _ id: String, tool: String? = nil) -> WireEvent {
+        WireEvent(event: k, session: id, project: "p", tool: tool, notification: nil, agentId: nil, source: nil, ts: 0)
+    }
+
+    @Test("Working characters act for a while, then walk somewhere nearby, at most 48 pt/s, and act again")
+    func wander() throws {
+        let store = Self.sessions(1), sim = Self.sim(store)
+        sim.release(store.ordered)
+        Self.run(sim, store, until: 1.5)
+        let landed = try #require(sim.members["s0"])
+        #expect(landed.mode == .rest)
+        var walked = false, lastX = landed.x, lastY = landed.y, speeds: [Double] = []
+        var poses: Set<Pose> = []
+        while sim.time < 40 {
+            Self.run(sim, store, until: sim.time + 0.1)
+            let m = try #require(sim.members["s0"])
+            speeds.append(hypot(m.x - lastX, m.y - lastY) / 0.1)
+            lastX = m.x; lastY = m.y
+            poses.insert(m.pose)
+            if m.pose == .walk { walked = true }
+        }
+        #expect(walked)
+        #expect(poses.isSuperset(of: [.walk, .type]))
+        #expect(abs(Self.median(speeds) - Motion.walk) < 1)
+        #expect(hypot(lastX - landed.x, lastY - landed.y) > 1)
+    }
+
+    @Test("Everyone stays inside the walkable area")
+    func bounds() {
+        let store = Self.sessions(12, tool: "Read"), sim = Self.sim(store)
+        sim.release(store.ordered)
+        let st = Self.stage
+        while sim.time < 120 {
+            Self.run(sim, store, until: sim.time + 0.5)
+            for m in sim.members.values where m.mode == .rest {
+                #expect(m.x >= 36 - 0.001 && m.x <= st.width - 36 + 0.001, "\(m.id) x \(m.x)")
+                #expect(m.y >= st.minY - 0.001 && m.y <= st.bottom - 16 + 0.001, "\(m.id) y \(m.y)")
+            }
+        }
+    }
+
+    @Test("Searching creeps along with the magnifier (26 pt/s)")
+    func searchCreep() throws {
+        let store = Self.sessions(1, tool: "Grep"), sim = Self.sim(store)
+        sim.release(store.ordered)
+        var speeds: [Double] = [], last = (0.0, 0.0), sawWalkingSearch = false
+        Self.run(sim, store, until: 1.5)
+        if let m = sim.members["s0"] { last = (m.x, m.y) }
+        while sim.time < 40 {
+            Self.run(sim, store, until: sim.time + 0.1)
+            let m = try #require(sim.members["s0"])
+            let v = hypot(m.x - last.0, m.y - last.1) / 0.1
+            if v > 1 { sawWalkingSearch = sawWalkingSearch || m.pose == .search }
+            speeds.append(v)
+            last = (m.x, m.y)
+        }
+        #expect(sawWalkingSearch)
+        #expect(abs(Self.median(speeds) - Motion.searchCreep) < 1)
+    }
+
+    @Test("Needs you: runs to the bottom of the screen, then waves and hops under a !")
+    func needsYouRun() throws {
+        let store = Self.sessions(1), sim = Self.sim(store)
+        sim.release(store.ordered)
+        Self.run(sim, store, until: 1.5)
+        store.apply(Self.ev(.permissionRequest, "s0", tool: "Bash"), now: 1)
+        Self.run(sim, store, until: 1.6)
+        #expect(sim.members["s0"]?.pose == .walk)
+        Self.run(sim, store, until: 15)
+        let m = try #require(sim.members["s0"])
+        #expect(abs(m.y - (Self.stage.bottom - 26)) < 0.001)
+        #expect(m.pose == .wave && m.emote == .icon(.bang))
+        // Answered: back to work and wandering.
+        store.apply(Self.ev(.preToolUse, "s0", tool: "Edit"), now: 2)
+        Self.run(sim, store, until: 15.2)
+        #expect(sim.members["s0"]?.pose == .type)
+    }
+
+    @Test("Finishing a turn: a 2.6 s cheer, then idle strolling (32 pt/s) with coffee or a nap")
+    func finishThenIdle() throws {
+        let store = Self.sessions(1), sim = Self.sim(store)
+        sim.release(store.ordered)
+        Self.run(sim, store, until: 1.5)
+        store.apply(Self.ev(.stop, "s0"), now: 1)
+        Self.run(sim, store, until: 1.6)
+        #expect(sim.members["s0"]?.pose == .cheer)
+        #expect(sim.members["s0"]?.emote == .icon(.check))
+        Self.run(sim, store, until: 4.3)
+        let rest = try #require(sim.members["s0"]).look.rest == .sleep ? Pose.sleep : .coffee
+        var poses: Set<Pose> = [], speeds: [Double] = [], last = (sim.members["s0"]!.x, sim.members["s0"]!.y)
+        while sim.time < 60 {
+            Self.run(sim, store, until: sim.time + 0.1)
+            let m = try #require(sim.members["s0"])
+            poses.insert(m.pose)
+            speeds.append(hypot(m.x - last.0, m.y - last.1) / 0.1)
+            last = (m.x, m.y)
+        }
+        #expect(!poses.contains(.cheer))
+        #expect(poses.isSuperset(of: [rest, .walk]))
+        #expect(abs(Self.median(speeds) - Motion.idleStroll) < 1)
     }
 }

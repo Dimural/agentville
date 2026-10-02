@@ -60,7 +60,7 @@ public struct CrewMember: Equatable, Sendable {
         case drop
         /// Its session ended: waves "Bye!" then poofs.
         case leave
-        /// On the desktop playing its session's pose (walking around arrives in M4).
+        /// On the desktop: acting out its session, wandering between acts (prototype `roam`).
         case rest
     }
 
@@ -82,6 +82,14 @@ public struct CrewMember: Equatable, Sendable {
     var t = 0.0
     var blinkT: Double
     var timer = 0.0
+    /// Roaming: acting in place, or walking to (tx, ty).
+    enum Phase: Equatable, Sendable { case act, walk }
+    var phase = Phase.act
+    var tx = 0.0, ty = 0.0
+    /// Running to the bottom of the screen because the session needs the user.
+    var alert = false
+    var cheerT = 0.0
+    var lastStatus: SessionStatus?
 
     /// Horizontal and vertical stretch, as `drawEnt` applies it.
     public var stretch: (x: Double, y: Double) {
@@ -105,8 +113,8 @@ public enum CrewEvent: Equatable, Sendable {
     case gulp
 }
 
-/// The crew on the desktop: release and recall, ported from the prototype's `release`, `recall`,
-/// `spawnFromHome`, `sendHome`, `Ent.launch`/`land` and `updateEnt`. Pure and seeded, so tests drive
+/// The crew on the desktop: release, recall and roaming, ported from the prototype's `release`,
+/// `recall`, `spawnFromHome`, `sendHome`, `Ent.launch`/`land`, `updateEnt` and `roam`. Pure and seeded, so tests drive
 /// it with a fixed clock. The app renders `members` and `particles` and supplies `home`.
 public final class CrewSim {
     public var stage: Stage
@@ -318,6 +326,8 @@ public final class CrewSim {
                 m.x = f.to.x; m.y = f.to.y
                 land(&m)
                 m.mode = .rest
+                m.phase = .act
+                m.timer = rand(Motion.actAfterLanding)
             } else {
                 m.mode = .fly(f)
             }
@@ -331,6 +341,8 @@ public final class CrewSim {
             if m.z <= 0 {
                 land(&m)
                 m.mode = .rest
+                m.phase = .act
+                m.timer = 1
                 m.bubble = Bubble(text: Phrases.hello, until: time + 1.2)
             }
         case .leave:
@@ -343,7 +355,7 @@ public final class CrewSim {
                 return
             }
         case .rest:
-            pose = act(&m, session: sessions[id])
+            pose = roam(&m, dt: dt, session: sessions[id])
         }
         if m.mode != .rest { m.hop = 0 }
 
@@ -355,37 +367,85 @@ public final class CrewSim {
         members[id] = m
     }
 
-    /// In place, the pose `roam` would act out (no walking until M4).
-    private func act(_ m: inout CrewMember, session: Session?) -> Pose {
+    /// Port of `roam`: act out the session for a while, then walk somewhere nearby. Needing the
+    /// user means running to the bottom of the screen to wave; a finished turn means a cheer first.
+    /// Meetings, sidekicks and the activity particles arrive later in M4.
+    private func roam(_ m: inout CrewMember, dt: Double, session: Session?) -> Pose {
         guard let s = session else { m.hop = 0; return .idle }
         m.look = s.look
-        switch s.status {
-        case .needsYou:
+        // A turn just finished (prototype `onDone`: cheerT = 2.6).
+        if s.status == .finished, m.lastStatus != nil, m.lastStatus != .finished { m.cheerT = Motion.cheer }
+        m.lastStatus = s.status
+        if m.cheerT > 0 {
+            m.cheerT -= dt
+            m.hop = abs(sin(m.t * 9)) * 12
+            m.emote = .icon(.check)
+            return .cheer
+        }
+        m.hop = 0
+
+        if s.status == .needsYou {
+            if !m.alert {
+                m.alert = true
+                m.tx = clamp(m.x, 60, stage.width - 60)
+                m.ty = stage.bottom - 26
+                m.phase = .walk
+            }
             m.emote = .icon(.bang)
+            if m.phase == .walk {
+                if walk(&m, dt: dt, speed: Motion.needsYouRun) { m.phase = .act } else { return .walk }
+            }
             m.hop = abs(sin(m.t * 7)) * 9
             return .wave
-        case .finished:
-            m.emote = .icon(.check)
-            m.hop = abs(sin(m.t * 9)) * 12
-            return .cheer
-        case .idle:
-            m.hop = 0
-            return s.look.rest == .sleep ? .sleep : .coffee
-        case .error, .working:
-            m.hop = 0
-            switch OfficeScene.DeskState(s.status) {
-            case .working(.edit): return .type
-            case .working(.read): return .read
-            case .working(.bash): return .bash
-            case .working(.search): return .search
-            case .working(.web): return .web
-            case .working(.think):
-                m.emote = .dots(Int(floor(m.t * 3)) % 4)
-                return .think
-            default: return .idle
+        }
+        if m.alert { m.alert = false; m.phase = .act; m.timer = 0.3 }
+
+        let idle = s.status == .idle || s.status == .finished
+        let work = OfficeScene.DeskState(s.status)
+        let searching = !idle && work == .working(.search)
+        if m.phase == .walk {
+            let speed = idle ? Motion.idleStroll : searching ? Motion.searchCreep : Motion.walk
+            if walk(&m, dt: dt, speed: speed) {
+                m.phase = .act
+                m.timer = rand(idle ? Motion.actIdle : Motion.actWorking)
             }
+            return searching ? .search : .walk
+        }
+
+        m.timer -= dt
+        if m.timer <= 0 {
+            let r = idle ? Motion.wanderIdle : Motion.wanderWorking
+            m.tx = clamp(m.x + rand(-r...r), 36, stage.width - 36)
+            m.ty = clamp(m.y + rand(-r * 0.6...r * 0.6), stage.minY + 6, stage.bottom - 16)
+            m.phase = .walk
+            return .walk
+        }
+        if idle { return s.look.rest == .sleep ? .sleep : .coffee }
+        switch work {
+        case .working(.edit): return .type
+        case .working(.read): return .read
+        case .working(.bash): return .bash
+        case .working(.search): return .search
+        case .working(.web): return .web
+        case .working(.think):
+            m.emote = .dots(Int(floor(m.t * 3)) % 4)
+            return .think
+        default: return .idle
         }
     }
+
+    /// Port of `walkTo`: true when it has arrived.
+    private func walk(_ m: inout CrewMember, dt: Double, speed: Double) -> Bool {
+        let dx = m.tx - m.x, dy = m.ty - m.y, d = hypot(dx, dy)
+        if d < 2 { m.x = m.tx; m.y = m.ty; return true }
+        let step = min(d, speed * dt)
+        m.x += dx / d * step
+        m.y += dy / d * step
+        if abs(dx) > 1 { m.face = dx > 0 ? 1 : -1 }
+        return false
+    }
+
+    private func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { max(lo, min(hi, v)) }
 
     /// Prototype `FPS`.
     static let fps: [Pose: Double] = [

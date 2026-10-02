@@ -69,6 +69,17 @@ public enum Motion {
     public static let dropHeight = 0.7
     /// "Bye!" wave before an ended session's character poofs.
     public static let leaveTime = 1.1
+    /// Walking speeds, pt/s: working, searching (creeping with the magnifier), idle stroll, the
+    /// "needs you" run to the bottom of the screen.
+    public static let walk = 48.0, searchCreep = 26.0, idleStroll = 32.0, needsYouRun = 120.0
+    /// How long a character acts before wandering on: working, idle.
+    public static let actWorking = 3.0...7.0, actIdle = 6.0...12.0
+    /// How far it wanders (y range × 0.6): working, idle.
+    public static let wanderWorking = 220.0, wanderIdle = 120.0
+    /// First act after landing.
+    public static let actAfterLanding = 0.6...1.6
+    /// Cheer after a turn finishes.
+    public static let cheer = 2.6
     /// Chance of a shout on release / recall.
     public static let releaseShoutChance = 0.35, recallShoutChance = 0.3
 }
