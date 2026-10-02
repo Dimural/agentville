@@ -36,7 +36,7 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] `SessionStore` with every transition, staleness and stress tests
 - [x] `SocketListener` in the app (bind, batch, unlink on quit): `SocketListenerTests` (real socket: order, drops, re-sanitize, burst batching, socket → store equals direct apply, unlink only our own file). Manual 2026-10-01: replay `demo-mix` and a 1,080-event burst all accepted; quit by SIGTERM/SIGINT leaves no socket file; 0.00 s CPU over 30 s idle
 - [x] `agentville-replay` + all scenarios in [testing-strategy.md](../quality/testing-strategy.md#replay-scenarios-m1) (scenarios are executable specs)
-- [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D)
+- [x] Debug list window in the app showing live store state (menu → *Session List (Debug)…*, ⌘D). Replaced in M2 by the desk window
 - [x] Owner checks a replayed scenario in the debug window: 2026-10-01, `demo-mix` final state matched every `expect` line (5 sessions, 18 events received, 0 dropped)
 - [x] Owner checks a real Claude Code session in the debug window: 2026-10-01, plugin installed from the local marketplace + `scripts/dev-link-hook.sh`; owner confirmed the states looked right
 
@@ -46,8 +46,8 @@ Purpose: the build order. Each milestone ends with something the owner can see a
 - [x] Bounded sprite cache (`SpriteCache`, LRU 2,000)
 - [x] `PixelCanvas` → `CGImage` in the app, nearest-neighbour, integer scales: `PixelImage` (Core, CoreGraphics only), `PixelImageTests`
 - [x] Office renderer port (`drawOffice`, `screenFor`, `deskUnits`): day/night, 6 desks, every monitor screen, "+N more below" count; golden office frames: `OfficeRendererTests`. About 2 ms per frame in a debug build
-- [ ] Desk window: office (≈12 fps, stops when hidden; "+N more below" badge) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list
-- [ ] Status item: pixel head, count, red dot when anything needs you
+- [x] Desk window: office (≈12 fps, stops when hidden; "+N more below" badge) + session list (avatar, name, tool, chip, elapsed; ≤ 4 Hz); replaces the debug list. `DeskWindowController` + `DeskList` (`DeskListTests`); 2026-10-02: snapshots of the window during `demo-mix` and an 8-session twins replay checked against the prototype's layout
+- [x] Status item: pixel head, count, red dot when anything needs you: `StatusItemController`, `MenuBarIcon` (`MenuBarIconTests`). Not yet seen on a real menu bar: part of the owner's review
 - [ ] Owner's side-by-side review against the prototype with replayed sessions
 
 ## Later milestones

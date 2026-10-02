@@ -1,5 +1,5 @@
-// Lifecycle and ownership: socket listener → session store → status item and debug window.
-// M1 data path (docs/process/milestones.md). The office and overlay arrive in M2–M3.
+// Lifecycle and ownership: socket listener → session store → status item and desk window.
+// The overlay arrives in M3 (docs/process/milestones.md).
 import AgentvilleCore
 import AppKit
 
@@ -9,9 +9,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let store = SessionStore()
     private(set) var listener: SocketListener?
 
-    private var statusItem: NSStatusItem?
-    private var headerItem: NSMenuItem?
-    private var debugWindow: DebugWindowController?
+    private var statusItem: StatusItemController?
+    private var deskWindow: DeskWindowController?
     private var tickTimer: Timer?
     /// SIGTERM/SIGINT (`kill`, Ctrl-C) become a normal quit, so the socket file is removed then too.
     private var signalSources: [DispatchSourceSignal] = []
@@ -33,14 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         RunLoop.main.add(timer, forMode: .common)
         tickTimer = timer
         refreshStatusItem()
+        // Dev convenience for side-by-side reviews: `Agentville --show-window` opens the desk window.
+        if CommandLine.arguments.contains("--show-window") { toggleDeskWindow() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         // Nothing survives quit (non-negotiable #3): close the socket and remove its file.
         listener?.stop()
         tickTimer?.invalidate()
-        debugWindow?.close()
-        if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+        deskWindow?.close()
+        statusItem?.remove()
     }
 
     private func quitOnSignals() {
@@ -87,39 +88,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Status item
+    // MARK: - Status item and desk window
 
     private func buildStatusItem() {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.toolTip = "Agentville"
-        let menu = NSMenu()
-        let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        header.isEnabled = false
-        menu.addItem(header)
-        menu.addItem(.separator())
-        let debug = NSMenuItem(title: "Session List (Debug)…", action: #selector(showDebugWindow), keyEquivalent: "d")
-        debug.target = self
-        menu.addItem(debug)
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Agentville", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-        item.menu = menu
-        statusItem = item
-        headerItem = header
+        statusItem = StatusItemController(
+            onToggleWindow: { [weak self] in self?.toggleDeskWindow() },
+            isWindowVisible: { [weak self] in self?.deskWindow?.isVisible ?? false })
     }
 
     private func refreshStatusItem() {
-        let s = store.summary
-        statusItem?.button?.title = "◕‿◕ \(s.active)" + (s.needYou > 0 ? " !" : "")
-        if listener == nil {
-            headerItem?.title = "Agentville: not listening (socket unavailable)"
-        } else {
-            let noun = s.active == 1 ? "session" : "sessions"
-            headerItem?.title = "Agentville: \(s.active) \(noun)" + (s.needYou > 0 ? ", \(s.needYou) need you" : "")
-        }
+        statusItem?.update(store.summary, listening: listener != nil)
     }
 
-    @objc private func showDebugWindow() {
-        if debugWindow == nil { debugWindow = DebugWindowController(app: self) }
-        debugWindow?.present()
+    private func toggleDeskWindow() {
+        if deskWindow == nil { deskWindow = DeskWindowController(app: self) }
+        guard let w = deskWindow else { return }
+        if w.isVisible { w.hide() } else { w.show() }
     }
 }

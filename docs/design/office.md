@@ -6,7 +6,8 @@ Purpose: the exact pixel room to port from `drawOffice`, `screenFor` and `deskUn
 
 - The room is **216×136 units**, drawn at **2 pt per unit** (432×272 pt). Redraw at about **12 fps** while visible; stop when hidden.
 - **6 desks**, 2 rows of 3: `deskUnits(i)`: `row = i / 3`, `col = i % 3`, `gx = 4 + col·70`, `top = row ? 118 : 72`. The feet anchor is at (`gx + 22`, `top + 8`).
-- Sessions occupy desks in store order. When there are more than 6, a "+N more below" badge appears bottom-right (pixel font, accent background, 2 px ink border).
+- Sessions occupy desks in store order. When there are more than 6, a "+N more below" badge appears bottom-right, 8 pt from the edges (accent background, 2 px ink border; the system mono font stands in for the prototype's pixel web font).
+- **Twins** (open question 14): a later session in the same folder shows a small number badge (2, 3…) on its monitor's top-left corner (paper fill, 1 px ink border). The prototype has no twins; this spot stays clear of the "+N more below" badge and of emotes.
 
 ## Room (day / night)
 
