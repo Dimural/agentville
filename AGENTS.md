@@ -38,7 +38,8 @@ Package.swift                one SwiftPM package; no .xcodeproj (see ADR 0004)
 Sources/AgentvilleWire/      THE privacy boundary: hook payload → allowlisted WireEvent, codec, socket
 Sources/AgentvilleCore/      pure, testable app logic (re-exports AgentvilleWire); no AppKit
   Sessions/                  tool→activity mapping, SessionStore state machine, Scenario parser, constants
-  Looks/                     deterministic character looks (port of prototype lookFor)
+  Looks/                     deterministic character looks (port of prototype lookFor), sprite + office renderers
+  Crew/                      CrewSim: the crew on the desktop (release, recall, particles), pure and seeded
   Transport/                 SocketListener: the app's receiving end of the hook socket
 Sources/agentville-hook/     the hook helper Claude Code runs (links only AgentvilleWire)
 Sources/agentville-replay/   dev tool: sends scripted events to the app socket

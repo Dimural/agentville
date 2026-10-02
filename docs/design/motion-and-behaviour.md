@@ -1,6 +1,6 @@
 # Motion and behaviour constants
 
-Purpose: every number that shapes how the crew moves and behaves, copied from the prototype. Code constants live in `Sources/AgentvilleCore/Sessions/Constants.swift` (behaviour/limits) and the app's motion constants file, and must cite this doc.
+Purpose: every number that shapes how the crew moves and behaves, copied from the prototype. Code constants live in `Sources/AgentvilleCore/Sessions/Constants.swift` (`Limits`, `Timing`, `Motion`, `Phrases`) and must cite this doc. The choreography itself is `CrewSim` (`Sources/AgentvilleCore/Crew/`), tested by `CrewSimTests`.
 
 ## Physics
 

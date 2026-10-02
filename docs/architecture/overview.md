@@ -34,6 +34,7 @@ AgentvilleWire   (Foundation/Darwin only) HookPayloadFilter, Sanitize, WireEvent
 AgentvilleCore   (no AppKit, no global state, 100% unit-testable; re-exports AgentvilleWire; CoreGraphics only for PixelImage)
    ├── Sessions   ActivityMapping, SessionStore, Session, StoreEffect, Scenario, Constants, DeskList, PanelPlacement
    ├── Looks      LookHash (hash + rng), RGB, Palette, Look, LookGenerator, PixelCanvas, PixelImage, SpriteRenderer, SpriteCache, OfficeRenderer
+   ├── Crew       CrewSim (release/recall choreography on the desktop, particles; seeded and pure), Stage, Home
    └── Transport  SocketListener (the app's receiving end: bind, drain, decode, batch, clean unlink)
 agentville-hook  → AgentvilleWire only. Tiny (≈150 KB); must start fast.
 agentville-replay→ AgentvilleCore

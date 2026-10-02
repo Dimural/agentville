@@ -47,3 +47,35 @@ public enum Timing {
         public static let idle: TimeInterval = 45 * 60
     }
 }
+
+/// How the crew moves on the desktop. Values from the prototype; table in
+/// docs/design/motion-and-behaviour.md. Points and seconds.
+public enum Motion {
+    /// Prototype `G`.
+    public static let gravity = 1500.0
+    /// Release: first leap after 120 ms, then one every 85 ms.
+    public static let releaseFirst = 0.12, releaseStagger = 0.085
+    /// Release flight duration range.
+    public static let releaseFlight = 0.8...1.1
+    /// Recall: first one leaves after 60 ms, then one every 55 ms, bottom-most first.
+    public static let recallFirst = 0.06, recallStagger = 0.055
+    /// Recall flight duration range.
+    public static let recallFlight = 0.5...0.7
+    /// Stretched while flying (`sx .92, sy 1.1`).
+    public static let flightStretch = (x: 0.92, y: 1.1)
+    /// Landing squash: decays at 6/s; `sx = 1 + .22·squash`, `sy = 1 − .22·squash`.
+    public static let squashDecay = 6.0, squashAmount = 0.22
+    /// A new session while the crew is out drops in from 70% of the screen height.
+    public static let dropHeight = 0.7
+    /// "Bye!" wave before an ended session's character poofs.
+    public static let leaveTime = 1.1
+    /// Chance of a shout on release / recall.
+    public static let releaseShoutChance = 0.35, recallShoutChance = 0.3
+}
+
+/// What the crew says (docs/design/motion-and-behaviour.md#phrases).
+public enum Phrases {
+    public static let release = ["Wheee!", "Freedom!", "Hi!", "Let's go!", "Stretch time"]
+    public static let recall = ["Coming!", "Okay!", "Back to work!", "On my way"]
+    public static let hello = "Hello!", bye = "Bye!"
+}
