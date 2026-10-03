@@ -29,7 +29,7 @@ let package = Package(
         .executableTarget(
             name: "Agentville",
             dependencies: ["AgentvilleCore"],
-            linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("SpriteKit")]
+            linkerSettings: [.linkedFramework("AppKit"), .linkedFramework("SpriteKit"), .linkedFramework("Carbon")]
         ),
 
         .testTarget(

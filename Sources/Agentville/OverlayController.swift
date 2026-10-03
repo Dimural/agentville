@@ -1,6 +1,9 @@
-// The crew on the desktop: one borderless, transparent, shadowless, click-through window over the
-// menu bar's display, with a SpriteKit scene that draws `CrewSim` (docs/architecture/app.md,
-// docs/architecture/input-and-safety.md). In M3 it never takes a click: grabbing arrives in M5.
+// The crew on the desktop: one borderless, transparent, shadowless window over the menu bar's
+// display, with a SpriteKit scene that draws `CrewSim` (docs/architecture/app.md,
+// docs/architecture/input-and-safety.md). It is click-through except while ⌥ is held over a
+// character or a drag is in progress (non-negotiable #1); ⌥ and the cursor are polled each frame,
+// never tapped, so no permission is needed. It's a non-activating panel, so grabbing someone
+// doesn't take focus from the user's app.
 // When the crew is home and the particles are gone, the scene pauses and the window leaves the
 // screen (performance rule 1). More displays arrive in M8.
 import AgentvilleCore
@@ -10,8 +13,8 @@ import SpriteKit
 @MainActor
 final class OverlayController {
     let sim: CrewSim
-    private let window: NSWindow
-    private let view: SKView
+    private let window: NSPanel
+    private let view: OverlayView
     private let scene: CrewScene
     private(set) var screenFrame: CGRect
     /// On screen and running (presentScene un-pauses the view, so don't trust `isPaused` for this).
@@ -27,7 +30,8 @@ final class OverlayController {
         sim = CrewSim(stage: Self.stage(for: screen))
         sim.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
 
-        window = NSWindow(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: true)
+        window = OverlayPanel(contentRect: screen.frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        window.becomesKeyOnlyIfNeeded = true
         window.isReleasedWhenClosed = false
         window.isOpaque = false
         window.backgroundColor = .clear
@@ -39,13 +43,14 @@ final class OverlayController {
         window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
         window.setFrame(screen.frame, display: false)
 
-        view = SKView(frame: CGRect(origin: .zero, size: screen.frame.size))
+        view = OverlayView(frame: CGRect(origin: .zero, size: screen.frame.size))
         view.allowsTransparency = true
         view.ignoresSiblingOrder = true
         view.isPaused = true
         scene = CrewScene(size: screen.frame.size)
         window.contentView = view
         scene.controller = self
+        view.controller = self
         view.presentScene(scene)
         view.isPaused = true // presentScene un-pauses the view
     }
@@ -91,13 +96,64 @@ final class OverlayController {
         view.isPaused = false
     }
 
+    // MARK: - Input (docs/architecture/input-and-safety.md)
+
+    /// ⌥ is held (polled each frame).
+    private(set) var optionHeld = false
+
+    /// Port of the prototype's capture-phase listeners, with polling instead of events: read ⌥ and
+    /// the cursor, feed the hover fade and grab mode, end a drag when ⌥ is let go, and take the mouse
+    /// only while ⌥ is held over someone (or mid-drag). Polling `NSEvent` needs no permission.
+    fileprivate func pollInput() {
+        optionHeld = NSEvent.modifierFlags.contains(.option)
+        let mouse = NSEvent.mouseLocation
+        let p = simPoint(mouse)
+        sim.grabMode = optionHeld
+        sim.pointer = screenFrame.contains(mouse) ? (Double(p.x), Double(p.y)) : nil
+        if !optionHeld, sim.dragging != nil { sim.endDrag(cancel: false) }
+        let capture = sim.capturesMouse(optionHeld: optionHeld, x: p.x, y: p.y)
+        if window.ignoresMouseEvents == capture { window.ignoresMouseEvents = !capture }
+    }
+
+    fileprivate func mouse(_ phase: OverlayView.Phase, _ event: NSEvent) {
+        let p = simPoint(NSEvent.mouseLocation)
+        switch phase {
+        case .down:
+            guard optionHeld, let id = sim.hitTest(x: p.x, y: p.y) else { return }
+            sim.grab(id, x: p.x, y: p.y, at: event.timestamp)
+        case .dragged:
+            sim.dragTo(x: p.x, y: p.y, at: event.timestamp)
+        case .up:
+            sim.endDrag(cancel: false)
+        }
+    }
+
     /// Called by the scene once the crew is home and the particles are gone.
     fileprivate func sleep() {
         awake = false
+        window.ignoresMouseEvents = true
         view.isPaused = true
         window.orderOut(nil)
         scene.clear()
     }
+}
+
+/// Never key or main: the user's app keeps focus while they play with the crew.
+final class OverlayPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+/// Turns presses into grabs. Only receives them while the overlay has stopped ignoring the mouse,
+/// which is only while ⌥ is held over a character.
+@MainActor
+final class OverlayView: SKView {
+    enum Phase { case down, dragged, up }
+    weak var controller: OverlayController?
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseDown(with event: NSEvent) { controller?.mouse(.down, event) }
+    override func mouseDragged(with event: NSEvent) { controller?.mouse(.dragged, event) }
+    override func mouseUp(with event: NSEvent) { controller?.mouse(.up, event) }
 }
 
 /// Draws the sim each frame. Nodes are reused: one set per crew member, a pool for particles.
@@ -135,6 +191,7 @@ final class CrewScene: SKScene {
         guard let c = controller else { return }
         let dt = last.map { now - $0 } ?? 0
         last = now
+        c.pollInput()
         for e in c.sim.update(dt: dt, sessions: c.sessions()) { c.onEvent?(e) }
         draw(c.sim)
         if c.sim.isIdle { c.sleep() }
@@ -156,10 +213,16 @@ final class CrewScene: SKScene {
             }()
             let sc = m.scale, lift = m.z + m.hop
             Self.shadow(n.shadow1, n.shadow2, x: m.x, y: m.y, sc: sc, z: lift, H: H)
-            drawSidekick(m, n, H: H)
+            drawSidekick(m, n, H: H, sim: sim)
 
-            let tex = textures.sprite(m.look, m.drawPose, frame: m.frame)
+            let hl = sim.grabMode
+            let tex = textures.sprite(m.look, m.drawPose, frame: m.frame, highlight: hl)
             if n.sprite.texture !== tex { n.sprite.texture = tex }
+            let a = CGFloat(m.alpha)
+            n.sprite.alpha = a; n.emote.alpha = a; n.side.alpha = a; n.badge.alpha = a
+            n.bubble.alpha = max(0.15, a)
+            for sh in [n.shadow1, n.shadow2, n.sideShadow1, n.sideShadow2] { sh.alpha = Self.shadowAlpha * a }
+            drawDizzy(m, n, H: H)
             let st = m.stretch
             n.sprite.xScale = CGFloat(m.face * st.x * sc)
             n.sprite.yScale = CGFloat(st.y * sc)
@@ -199,6 +262,46 @@ final class CrewScene: SKScene {
             nodes[id] = nil
         }
         drawParticles(sim.particles, scale: sim.stage.scale, H: H)
+        drawHud(sim, H: H)
+    }
+
+    /// Two yellow stars circling the head of a dizzy character (the `dizzy` part of `drawEnt`).
+    @MainActor
+    private func drawDizzy(_ m: CrewMember, _ n: MemberNodes, H: CGFloat) {
+        let on = m.pose == .dizzy
+        for (i, star) in n.stars.enumerated() {
+            star.isHidden = !on
+            guard on else { continue }
+            let sc = m.scale, s = max(1, sc - 1), lift = m.z + m.hop
+            let ang = m.t * 6 + Double(i) * .pi
+            let x = (m.x + cos(ang) * 6 * sc - sc).rounded(), y = (m.y - lift - 25 * sc + sin(ang) * 1.5 * sc).rounded()
+            star.texture = textures.plus
+            star.color = Self.color(RGB(0xFFEC27))
+            star.colorBlendFactor = 1
+            star.size = CGSize(width: 3 * s, height: 3 * s)
+            star.position = CGPoint(x: x, y: H - y)
+            star.alpha = CGFloat(m.alpha)
+        }
+    }
+
+    // MARK: - HUD (port of updateHud and `.hud`)
+
+    private let hud = SKSpriteNode()
+    private var hudMode: HudArt.Mode?
+
+    @MainActor
+    private func drawHud(_ sim: CrewSim, H: CGFloat) {
+        let mode: HudArt.Mode? = sim.grabMode && !sim.members.isEmpty ? .grab : sim.released ? .out : nil
+        if hud.parent == nil { hud.zPosition = 10; hud.anchorPoint = CGPoint(x: 0.5, y: 0); addChild(hud) }
+        hud.isHidden = mode == nil
+        guard let mode else { hudMode = nil; return }
+        if mode != hudMode {
+            hudMode = mode
+            let t = HudArt.texture(mode)
+            hud.texture = t
+            hud.size = t.size()
+        }
+        hud.position = CGPoint(x: (size.width / 2).rounded(), y: H - sim.stage.bottom + 12)
     }
 
     /// Port of `shadow`: two stacked rows, narrower the higher it flies.
@@ -212,13 +315,13 @@ final class CrewScene: SKScene {
     /// The subagent mini-me (the sidekick part of `drawEnt`), one size smaller, behind its
     /// character, with a count badge when several subagents run (open question 12's default).
     @MainActor
-    private func drawSidekick(_ m: CrewMember, _ n: MemberNodes, H: CGFloat) {
+    private func drawSidekick(_ m: CrewMember, _ n: MemberNodes, H: CGFloat, sim: CrewSim) {
         let parts = [n.sideShadow1, n.sideShadow2, n.side, n.badge]
         guard let side = m.side else { for p in parts { p.isHidden = true }; return }
         for p in parts { p.isHidden = false }
         let ss = max(1, m.scale - 1)
         Self.shadow(n.sideShadow1, n.sideShadow2, x: side.x, y: side.y, sc: ss, z: 0, H: H)
-        let tex = textures.sprite(m.look, side.pose, frame: side.frame)
+        let tex = textures.sprite(m.look, side.pose, frame: side.frame, highlight: sim.grabMode)
         if n.side.texture !== tex { n.side.texture = tex }
         n.side.xScale = CGFloat(side.face * ss)
         n.side.yScale = CGFloat(ss)
@@ -311,9 +414,10 @@ final class CrewScene: SKScene {
         let sideShadow1 = CrewScene.shadowNode(), sideShadow2 = CrewScene.shadowNode()
         let side = MemberNodes.spriteNode()
         let badge = SKSpriteNode()
+        let stars = [SKSpriteNode(), SKSpriteNode()]
         let emote = SKSpriteNode()
         let bubble = SKSpriteNode()
-        private var all: [SKSpriteNode] { [shadow1, shadow2, sideShadow1, sideShadow2, side, sprite, badge, emote, bubble] }
+        private var all: [SKSpriteNode] { [shadow1, shadow2, sideShadow1, sideShadow2, side, sprite, badge, emote, bubble] + stars }
 
         /// Feet at pixel (AX, AY) from the top-left (prototype drawImage(img, −AX, −AY)).
         static func spriteNode() -> SKSpriteNode {
@@ -332,6 +436,7 @@ final class CrewScene: SKScene {
             badge.zPosition = 3
             bubble.zPosition = 4
             side.isHidden = true; badge.isHidden = true; sideShadow1.isHidden = true; sideShadow2.isHidden = true
+            for s in stars { s.anchorPoint = CGPoint(x: 0, y: 1); s.zPosition = 3; s.isHidden = true }
         }
 
         func add(to scene: SKScene) { for n in all { scene.addChild(n) } }
@@ -350,7 +455,7 @@ final class CrewScene: SKScene {
 /// Nearest-neighbour textures for sprites and emotes, and speech bubble art. Bounded.
 @MainActor
 final class TextureCache {
-    private struct Key: Hashable { let look: Look; let pose: Pose; let frame: Int }
+    private struct Key: Hashable { let look: Look; let pose: Pose; let frame: Int; let highlight: Bool }
     private let sprites = SpriteCache()
     private var spriteTextures: [Key: SKTexture] = [:]
     private var emoteTextures: [Emote: SKTexture] = [:]
@@ -376,11 +481,12 @@ final class TextureCache {
         return t
     }
 
-    func sprite(_ look: Look, _ pose: Pose, frame: Int) -> SKTexture {
-        let key = Key(look: look, pose: pose, frame: frame)
+    /// `highlight`: grab mode's light outline (prototype `sprite(…, hl)`).
+    func sprite(_ look: Look, _ pose: Pose, frame: Int, highlight: Bool = false) -> SKTexture {
+        let key = Key(look: look, pose: pose, frame: frame, highlight: highlight)
         if let t = spriteTextures[key] { return t }
         if spriteTextures.count >= Limits.spriteCache { spriteTextures.removeAll(keepingCapacity: true) }
-        let t = Self.texture(sprites.sprite(look, pose, frame: frame, highlight: false))
+        let t = Self.texture(sprites.sprite(look, pose, frame: frame, highlight: highlight))
         spriteTextures[key] = t
         return t
     }
@@ -491,5 +597,40 @@ enum BubbleArt {
             return true
         }
         return SKTexture(image: image)
+    }
+}
+
+/// The HUD pill at the bottom of the screen (port of `.hud` and `updateHud`): a dark translucent
+/// pill while the crew is out, an orange one in grab mode. Bold parts in the accent colour.
+@MainActor
+enum HudArt {
+    enum Mode: Equatable { case out, grab }
+    private static var cache: [Mode: SKTexture] = [:]
+
+    static func texture(_ mode: Mode) -> SKTexture {
+        if let t = cache[mode] { return t }
+        let font = NSFont.systemFont(ofSize: 12.5, weight: .medium), bold = NSFont.systemFont(ofSize: 12.5, weight: .semibold)
+        let ink: NSColor = mode == .grab ? Theme.pixDark : .white
+        let strong: NSColor = mode == .grab ? Theme.pixDark : Theme.accent
+        let parts: [(String, Bool)] = mode == .grab
+            ? [("Grab mode", true), ("  drag anyone, let go to throw", false)]
+            : [("Clicks pass through · hold ", false), ("⌥", true), (" to grab · ", false), ("⌃⌥C", true), (" calls them back", false)]
+        let text = NSMutableAttributedString()
+        for (str, b) in parts {
+            text.append(NSAttributedString(string: str, attributes: [.font: b ? bold : font, .foregroundColor: b ? strong : ink]))
+        }
+        let ts = text.size()
+        let size = CGSize(width: ceil(ts.width) + 24, height: ceil(ts.height) + 14)
+        let image = NSImage(size: size, flipped: true) { r in
+            let fill = mode == .grab ? NSColor(srgbRed: 1, green: 163 / 255, blue: 0, alpha: 0.95)
+                                     : NSColor(srgbRed: 20 / 255, green: 18 / 255, blue: 40 / 255, alpha: 0.72)
+            fill.setFill()
+            NSBezierPath(roundedRect: r, xRadius: r.height / 2, yRadius: r.height / 2).fill()
+            text.draw(at: CGPoint(x: 12, y: 7))
+            return true
+        }
+        let t = SKTexture(image: image)
+        cache[mode] = t
+        return t
     }
 }

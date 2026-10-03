@@ -108,7 +108,8 @@ public struct CrewMember: Equatable, Sendable {
     /// Seconds of seeing stars left after a hard throw.
     var dizzy = 0.0
     var anim: Double
-    var t = 0.0
+    /// Seconds since it came out (drives hops and the dizzy stars).
+    public internal(set) var t = 0.0
     var blinkT: Double
     var timer = 0.0
     /// Roaming: acting in place, or walking to (tx, ty).

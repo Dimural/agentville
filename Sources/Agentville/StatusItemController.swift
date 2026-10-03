@@ -47,6 +47,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(.separator())
         crewItem.target = self
         crewItem.action = #selector(toggleCrew)
+        // Shown for discoverability; the global shortcut itself is `HotKey`.
+        crewItem.keyEquivalent = "c"
+        crewItem.keyEquivalentModifierMask = [.control, .option]
         menu.addItem(crewItem)
         keepOpen.target = self
         keepOpen.action = #selector(togglePin)

@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItemController?
     private var deskPanel: DeskPanelController?
     private var overlay: OverlayController?
+    private var hotKey: HotKey?
     private var tickTimer: Timer?
     /// SIGTERM/SIGINT (`kill`, Ctrl-C) become a normal quit, so the socket file is removed then too.
     private var signalSources: [DispatchSourceSignal] = []
@@ -24,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildStatusItem()
         startListening()
+        hotKey = HotKey { [weak self] in self?.toggleCrew() }
         quitOnSignals()
         // Finished → idle and staleness need a clock. Cheap, coarse and tolerant, so idle stays idle.
         let timer = Timer(timeInterval: Timing.storeTick, repeats: true) { [weak self] _ in
@@ -55,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Nothing survives quit (non-negotiable #3): close the socket and remove its file.
         listener?.stop()
         tickTimer?.invalidate()
+        hotKey?.unregister()
         overlay?.close()
         deskPanel?.close()
         statusItem?.remove()

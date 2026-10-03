@@ -25,6 +25,7 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     private let pinButton = NSButton()
     private let moreButton = NSButton()
     private let releaseButton = ReleaseButton()
+    private let hint = NSTextField(labelWithString: "")
     private let content = WindowBackground()
     private var rows: [DeskList.Row] = []
     private var officeTimer: Timer?
@@ -385,7 +386,13 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
         content.layer?.masksToBounds = true
         content.layer?.borderWidth = 1
         content.layer?.borderColor = NSColor(white: 0.5, alpha: 0.25).cgColor
-        for v in [office, summary, rule, scroll, footRule, releaseButton, pinButton, moreButton] as [NSView] {
+        // `.winfoot .hint`: "⌃⌥C toggles", the keys in a kbd box (mono).
+        let h = NSMutableAttributedString(string: " ⌃⌥C ", attributes: [.font: Theme.mono(12, .medium), .foregroundColor: Theme.ink,
+                                                                     .backgroundColor: Theme.chipFill])
+        h.append(NSAttributedString(string: " toggles", attributes: [.font: Theme.body(12), .foregroundColor: Theme.muted]))
+        hint.attributedStringValue = h
+        hint.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        for v in [office, summary, rule, scroll, footRule, releaseButton, hint, pinButton, moreButton] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             content.addSubview(v)
         }
@@ -414,6 +421,9 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
             footRule.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.footerHeight),
             releaseButton.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 12),
             releaseButton.topAnchor.constraint(equalTo: footRule.bottomAnchor, constant: 10),
+            hint.leadingAnchor.constraint(equalTo: releaseButton.trailingAnchor, constant: 12),
+            hint.centerYAnchor.constraint(equalTo: releaseButton.centerYAnchor),
+            hint.trailingAnchor.constraint(lessThanOrEqualTo: pinButton.leadingAnchor, constant: -8),
             moreButton.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -10),
             moreButton.centerYAnchor.constraint(equalTo: content.bottomAnchor, constant: -Self.footerHeight / 2),
             moreButton.widthAnchor.constraint(equalToConstant: 24),

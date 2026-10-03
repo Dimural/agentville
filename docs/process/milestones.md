@@ -88,9 +88,9 @@ Scope: the crew stays glass unless ⌥ is held over a character ([input-and-safe
 - [x] The click-through decision (non-negotiable #1): capture the mouse only while ⌥ is held over a character, or while a drag is in progress. `CrewGrabTests`
 - [x] Hover fade: a character under the cursor eases to 16% opacity (not in grab mode), at `min(1, dt·14)`. `CrewGrabTests`
 - [x] Recall from mid-drag and mid-throw within 2.6 s (non-negotiable #2). `CrewGrabTests`
-- [ ] App: `InputPoller` (30–60 Hz, only while the crew is out) polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation`, flips `ignoresMouseEvents`; the overlay turns mouse down/drag/up into grabs; releasing ⌥ ends a drag; grab mode outlines everyone (highlight sprites)
-- [ ] HUD pill while the crew is out: "Clicks pass through · hold ⌥ to grab · ⌃⌥C calls them back"; in grab mode: "Grab mode · drag anyone, let go to throw"
-- [ ] ⌃⌥C toggles the crew from any app (Carbon hot key); the footer shows the "⌃⌥C toggles" hint
+- [x] App: `InputPoller` (30–60 Hz, only while the crew is out) polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation`, flips `ignoresMouseEvents`; the overlay turns mouse down/drag/up into grabs; releasing ⌥ ends a drag; grab mode outlines everyone (highlight sprites). Done as `OverlayController.pollInput()`, run each frame by the scene (so only while the crew is out); the overlay is a non-activating panel that never becomes key, so grabbing doesn't take focus from the user's app; hover fade and dizzy stars drawn
+- [x] HUD pill while the crew is out: "Clicks pass through · hold ⌥ to grab · ⌃⌥C calls them back"; in grab mode: "Grab mode · drag anyone, let go to throw"
+- [x] ⌃⌥C toggles the crew from any app (Carbon hot key, `HotKey`); the footer shows the "⌃⌥C toggles" hint, and the menu item shows the shortcut. 2026-10-03: HUD and footer hint checked in in-app snapshots; the hot key itself is part of the manual check
 - [ ] Manual: no permission prompt; grab, throw and tap over real apps; releasing ⌥ is click-through again at once
 - [ ] Owner's review of grabbing against the prototype
 
