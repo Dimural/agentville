@@ -92,6 +92,27 @@ public enum Motion {
     public static let meetCooldown = 18.0...30.0, meetFirstCooldown = 6.0...16.0
     /// A sidekick catches up at up to 140 pt/s.
     public static let sidekickFollow = 140.0
+
+    /// Walk-ons (prototype `notify-in`/`notify-hold`/`notify-out`): in from the right edge at 95 pt/s,
+    /// off again at 110. A Done! walk-on holds 6.5 s (cheering for the first 2.4, 30 confetti); a
+    /// Needs-you one up to 16 s, or until it's answered. Slot k stands `walkOnSpacing·k` further left
+    /// and `walkOnStep·k` higher, from `walkOnRight` and `walkOnBottom` in from the edges.
+    public static let walkOnIn = 95.0, walkOnOut = 110.0
+    public static let walkOnDoneHold = 6.5, walkOnNeedsYouHold = 16.0, walkOnCheer = 2.4, walkOnConfetti = 30
+    public static let walkOnRight = 80.0, walkOnSpacing = 130.0, walkOnBottom = 22.0, walkOnStep = 6.0
+    /// Screen widths below which only 2, then 1, walk-on slots fit (prototype `slotsMax`).
+    public static let walkOnTwoSlotsBelow = 900.0, walkOnOneSlotBelow = 560.0
+
+    /// The crowd (prototype `spawnCrowd`, `roamCrowd`): leaps out 60 ms after the last roamer in a
+    /// 1.1 s flight; wanders at 22 pt/s for up to 160 pt, resting 3–6 s between walks. A member's
+    /// finished turn: "name finished" for 2.4 s and 12 confetti.
+    public static let crowdAfterRoamers = 0.06, crowdFlight = 1.1
+    public static let crowdWander = 22.0, crowdWanderRadius = 160.0, crowdAct = 3.0...6.0
+    public static let crowdFinishedBubble = 2.4, crowdConfetti = 12
+    /// Stepping out of the crowd (prototype `syncRoamers`): a 0.7 s hop to within 140 pt of it.
+    public static let stepOutFlight = 0.7, stepOutRadius = 140.0
+    /// How often the roamers are re-synced with the sessions (prototype: every 0.25 s).
+    public static let rosterSync = 0.25
 }
 
 /// What the crew says (docs/design/motion-and-behaviour.md#phrases).
@@ -123,5 +144,12 @@ public enum Phrases {
     public static let release = ["Wheee!", "Freedom!", "Hi!", "Let's go!", "Stretch time"]
     public static let recall = ["Coming!", "Okay!", "Back to work!", "On my way"]
     public static let meet = ["hi!", "nice commit", "lunch?", "high five!"]
-    public static let hello = "Hello!", bye = "Bye!", done = "Done!", needsYou = "Needs you"
+    public static let hello = "Hello!", bye = "Bye!", done = "Done!", needsYou = "Needs you", myTurn = "My turn!"
+    /// Walk-on subtitle while a session waits (prototype: "name is waiting for permission").
+    public static func waiting(_ name: String) -> String { "\(name) is waiting for permission" }
+    /// The crowd announcing a member's finished turn.
+    public static func finished(_ name: String) -> String { "\(name) finished" }
+    /// The crowd's count bubble: "+N", and "N need you" under it.
+    public static func crowdCount(_ n: Int) -> String { "+\(n)" }
+    public static func needYou(_ n: Int) -> String { "\(n) need you" }
 }

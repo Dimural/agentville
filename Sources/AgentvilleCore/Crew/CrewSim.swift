@@ -35,8 +35,9 @@ public struct Particle: Equatable, Sendable {
 }
 
 public struct Bubble: Hashable, Sendable {
-    /// Prototype bubble classes: `say`, `done` (green title), `wait` (red title).
-    public enum Kind: Hashable, Sendable { case say, done, wait }
+    /// Prototype bubble classes: `say`, `done` (green title), `wait` (red title), `count` (the
+    /// crowd's orange "+N").
+    public enum Kind: Hashable, Sendable { case say, done, wait, count }
     public var text: String
     public var kind = Kind.say
     /// Second, smaller line (prototype `sub`): the session's name, and the turn time when done.
@@ -55,6 +56,29 @@ public struct Sidekick: Equatable, Sendable {
     public var frame = 0
     /// Walks while catching up, types while still.
     public var pose: Pose { moving ? .walk : .type }
+}
+
+/// A notice walking on while the crew is inside (prototype notifier `Ent`s: `slot`, `kind`, `more`).
+public struct WalkOn: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable { case done, needsYou }
+    /// 0 is right-most.
+    public let slot: Int
+    public let kind: Kind
+    /// Other finished turns folded into this one's bubble ("+N more").
+    public let more: Int
+}
+
+/// What the crowd shows: up to three half-size members, how many sessions it stands for, and how
+/// many of those need the user (prototype `crowdMembers`, `roamCrowd`, the crowd part of `drawEnt`).
+public struct Crowd: Equatable, Sendable {
+    public var looks: [Look]
+    /// Animation frame of each drawn member (walk or idle, slightly out of step).
+    public var frames: [Int]
+    public var pose: Pose
+    public var count: Int
+    public var waiting: Int
+    /// Where each drawn member stands, in sprite pixels from the crowd's feet (prototype `off`).
+    public static let offsets: [(x: Double, y: Double)] = [(-9, 2), (9, 3), (0, -2)]
 }
 
 public struct Flight: Equatable, Sendable {
@@ -86,6 +110,11 @@ public struct CrewMember: Equatable, Sendable {
         case drag
         /// Let go with some speed: flies, bounces and slides (prototype `thrown`).
         case thrown(vx: Double, vy: Double, hard: Bool)
+        /// A walk-on (prototype `notify-in`, `notify-hold`, `notify-out`): walking in from the right
+        /// edge, standing in its slot with its notice, walking back off.
+        case walkIn, hold, walkOff
+
+        var isWalkOn: Bool { self == .walkIn || self == .hold || self == .walkOff }
     }
 
     public let id: String
@@ -103,6 +132,10 @@ public struct CrewMember: Equatable, Sendable {
     public var emote: Emote?
     public var bubble: Bubble?
     public var side: Sidekick?
+    /// Set while it's a walk-on (crew inside), nil for roamers.
+    public internal(set) var walkOn: WalkOn?
+    /// Set on the crowd (`CrewSim.crowdID`) only.
+    public internal(set) var crowd: Crowd?
     /// Hover fade: eases to `Motion.hoverAlpha` while the cursor is over it.
     public var alpha = 1.0
     /// Seconds of seeing stars left after a hard throw.
@@ -138,7 +171,7 @@ public struct CrewMember: Equatable, Sendable {
 
     public static func == (a: CrewMember, b: CrewMember) -> Bool {
         a.id == b.id && a.x == b.x && a.y == b.y && a.z == b.z && a.mode == b.mode && a.pose == b.pose && a.frame == b.frame
-            && a.side == b.side
+            && a.side == b.side && a.walkOn == b.walkOn && a.crowd == b.crowd
     }
 }
 
@@ -150,8 +183,10 @@ public enum CrewEvent: Equatable, Sendable {
 }
 
 /// The crew on the desktop: release, recall and roaming, ported from the prototype's `release`,
-/// `recall`, `spawnFromHome`, `sendHome`, `Ent.launch`/`land`, `updateEnt` and `roam`. Pure and seeded, so tests drive
-/// it with a fixed clock. The app renders `members` and `particles` and supplies `home`.
+/// `recall`, `spawnFromHome`, `sendHome`, `Ent.launch`/`land`, `updateEnt` and `roam`; walk-ons
+/// (`CrewSim+WalkOns.swift`) and the crowd (`CrewSim+Crowd.swift`). Pure and seeded, so tests drive
+/// it with a fixed clock. The app renders `members` and `particles`, supplies `home`, and passes on
+/// the store's sessions (`sessionsChanged`) and effects (`notify`).
 public final class CrewSim {
     public var stage: Stage
     /// Where each session's character goes home to (its desk, or the menu bar icon).
@@ -159,31 +194,46 @@ public final class CrewSim {
     /// Cut confetti and similar (not used until M4's confetti).
     public var reduceMotion = false
 
-    public private(set) var released = false
-    public private(set) var members: [String: CrewMember] = [:]
-    public private(set) var particles: [Particle] = []
+    public internal(set) var released = false
+    public internal(set) var members: [String: CrewMember] = [:]
+    public internal(set) var particles: [Particle] = []
     /// Seconds since the sim was created.
     public private(set) var time = 0.0
 
-    private enum Action { case spawn(String), sendHome(String), forceHome(Int) }
-    private var pending: [(at: Double, action: Action)] = []
+    /// The crowd's key in `members`. Session ids are `[A-Za-z0-9_-]` only, so it can't collide.
+    public static let crowdID = "+crowd"
+
+    enum Action { case spawn(String), spawnCrowd, sendHome(String), forceHome(Int) }
+    var pending: [(at: Double, action: Action)] = []
     /// Bumped by every release and recall, so stale scheduled actions do nothing (prototype `token`).
     private var token = 0
-    private var looks: [String: Look] = [:]
+    var looks: [String: Look] = [:]
+    /// The store's sessions in order, as of the last `release` or `sessionsChanged`: the first
+    /// `Limits.roamers` roam, the rest are the crowd (prototype `roamers()`, `crowdMembers()`).
+    var roster: [Session] = []
+    var rosterIndex: [String: Int] = [:]
     /// Meetings are checked every `Motion.meetCheck` seconds (prototype `meetClock`).
     private var meetClock = 0.0
-    private var rng: SplitMix64
+    /// Roamers are re-synced every `Motion.rosterSync` seconds (prototype `accSync`).
+    private var syncClock = 0.0
+
+    /// Walk-ons waiting for a free slot (prototype `notices`), and finished turns pushed out of the
+    /// full queue, which still count toward "+N more" (prototype `overflowDone`).
+    struct Notice: Equatable { let id: String; let kind: WalkOn.Kind }
+    var noticeQueue: [Notice] = []
+    var overflowDone = 0
+    var rng: SplitMix64
 
     public init(stage: Stage, seed: UInt64 = UInt64.random(in: 1...UInt64.max)) {
         self.stage = stage
         rng = SplitMix64(seed: seed)
     }
 
-    /// Nobody out, nothing scheduled, no particles: the overlay can pause and hide.
-    public var isIdle: Bool { !released && members.isEmpty && particles.isEmpty && pending.isEmpty }
+    /// Nobody out, nothing scheduled or queued, no particles: the overlay can pause and hide.
+    public var isIdle: Bool { !released && members.isEmpty && particles.isEmpty && pending.isEmpty && noticeQueue.isEmpty }
 
     /// Sessions whose desks are empty because their character is out.
-    public var awayIDs: Set<String> { Set(members.keys) }
+    public var awayIDs: Set<String> { Set(members.keys).subtracting([Self.crowdID]) }
 
     /// ⌥ is held: everyone gets an outline and the hover fade is off.
     public var grabMode = false
@@ -196,6 +246,8 @@ public final class CrewSim {
         let ox, oy: Double
         var samples: [(x: Double, y: Double, t: Double)]
         var moved = 0.0
+        /// What it was doing when picked up: a tapped walk-on goes home (prototype `prevMode`).
+        let prevMode: CrewMember.Mode
     }
     private var drag: Drag?
 
@@ -208,9 +260,9 @@ public final class CrewSim {
 
     // MARK: - Grabbing (ports of hitBox, hitTest, the pointer handlers, endDrag, settle)
 
-    /// Port of `hitBox`: feet at (x, y), `8·S` either side, `24·S` tall above the lift.
+    /// Port of `hitBox`: feet at (x, y), `8·S` either side (`16·S` for the crowd), `24·S` tall above the lift.
     func hit(_ m: CrewMember, x px: Double, y py: Double, pad: Double) -> Bool {
-        let sc = m.scale, top = m.y - m.z - m.hop - 24 * sc, w = 8 * sc
+        let sc = m.scale, top = m.y - m.z - m.hop - 24 * sc, w = (m.id == Self.crowdID ? 16 : 8) * sc
         return px > m.x - w - pad && px < m.x + w + pad && py > top - pad && py < m.y + pad
     }
 
@@ -219,7 +271,7 @@ public final class CrewSim {
         members.values
             .filter { m in
                 switch m.mode {
-                case .rest, .thrown, .drop: true
+                case .rest, .thrown, .drop, .walkIn, .hold, .walkOff: true
                 case .fly, .wait, .leave, .drag: false
                 }
             }
@@ -236,11 +288,11 @@ public final class CrewSim {
     /// Press on a character (prototype `pointerdown`): it's lifted and dangles.
     public func grab(_ id: String, x: Double, y: Double, at t: Double) {
         guard drag == nil, var m = members[id] else { return }
-        drag = Drag(id: id, ox: m.x - x, oy: m.y - y, samples: [(x, y, t)])
+        drag = Drag(id: id, ox: m.x - x, oy: m.y - y, samples: [(x, y, t)], prevMode: m.mode)
         m.mode = .drag
         m.z = Grab.lift
         m.vz = 0
-        m.bubble = nil
+        if m.bubble?.kind != .count { m.bubble = nil }
         members[id] = m
     }
 
@@ -269,8 +321,12 @@ public final class CrewSim {
             settle(&m)
             return
         }
+        let isCrowd = d.id == Self.crowdID
         if d.moved < Grab.tapDistance {
+            // A tap on a walk-on sends it home; the crowd just carries on; anyone else hops.
             m.z = 0
+            if d.prevMode.isWalkOn { walkOff(&m); return }
+            if isCrowd { m.mode = .rest; return }
             settle(&m)
             m.cheerT = Grab.tapCheer
             m.bubble = Bubble(text: pick(Phrases.tap), until: time + 1)
@@ -283,12 +339,14 @@ public final class CrewSim {
         let speed = hypot(vx, vy)
         if speed > Grab.maxSpeed { vx *= Grab.maxSpeed / speed; vy *= Grab.maxSpeed / speed }
         m.vz = clamp(speed * Grab.liftFactor, Grab.minLift, Grab.maxLift)
-        m.mode = .thrown(vx: vx, vy: vy * Grab.verticalDamping, hard: speed > Grab.dizzySpeed)
-        if speed > Grab.shoutSpeed { m.bubble = Bubble(text: pick(Phrases.throwShout), until: time + 0.9) }
+        m.mode = .thrown(vx: vx, vy: vy * Grab.verticalDamping, hard: speed > Grab.dizzySpeed && !isCrowd)
+        if speed > Grab.shoutSpeed, !isCrowd { m.bubble = Bubble(text: pick(Phrases.throwShout), until: time + 0.9) }
     }
 
-    /// Port of `settle`: back to roaming where it landed.
+    /// Port of `settle`: back to roaming where it landed. While the crew is inside only walk-ons are
+    /// out, so they head off instead.
     private func settle(_ m: inout CrewMember) {
+        guard released || m.id == Self.crowdID else { walkOff(&m); return }
         m.mode = .rest
         m.phase = .act
         m.tx = m.x; m.ty = m.y
@@ -296,15 +354,20 @@ public final class CrewSim {
 
     // MARK: - Release and recall
 
-    /// Port of `release`: the first `Limits.roamers` sessions leap out, staggered.
+    /// Port of `release`: the first `Limits.roamers` sessions leap out, staggered, then the crowd
+    /// if there are more.
     @discardableResult
     public func release(_ sessions: [Session]) -> [CrewEvent] {
         guard !released else { return [] }
         released = true
         token += 1
-        for (i, s) in sessions.prefix(Limits.roamers).enumerated() {
-            looks[s.id] = s.look
+        setRoster(sessions)
+        let roamers = sessions.prefix(Limits.roamers)
+        for (i, s) in roamers.enumerated() {
             schedule(Motion.releaseFirst + Double(i) * Motion.releaseStagger, .spawn(s.id))
+        }
+        if sessions.count > Limits.roamers {
+            schedule(Motion.releaseFirst + Double(roamers.count) * Motion.releaseStagger + Motion.crowdAfterRoamers, .spawnCrowd)
         }
         return [.burp]
     }
@@ -316,7 +379,9 @@ public final class CrewSim {
         endDrag(cancel: true)
         released = false
         token += 1
-        pending.removeAll { if case .spawn = $0.action { true } else { false } }
+        pending.removeAll {
+            switch $0.action { case .spawn, .spawnCrowd: true; default: false }
+        }
         for (i, m) in members.values.sorted(by: { $0.y > $1.y || ($0.y == $1.y && $0.id < $1.id) }).enumerated() {
             var m = m
             m.emote = .icon(.bang)
@@ -324,17 +389,18 @@ public final class CrewSim {
             if chance(Motion.recallShoutChance) { m.bubble = Bubble(text: pick(Phrases.recall), until: time + 0.9) }
             m.mode = .wait
             m.hop = 0
+            m.walkOn = nil
             members[m.id] = m
             schedule(Motion.recallFirst + Double(i) * Motion.recallStagger, .sendHome(m.id))
         }
         schedule(Timing.recallForceComplete, .forceHome(token))
     }
 
-    /// Port of `syncRoamers`/`onAdded`/`onEnded`: call when the store changes. While the crew is
-    /// out, new sessions (within the cap) drop in and ended ones wave goodbye.
+    /// Port of `onAdded`/`onEnded`: call whenever sessions come or go (in store order). Ended ones
+    /// wave goodbye, wherever they are; while the crew is out, the roamers are re-synced at once.
     public func sessionsChanged(_ sessions: [Session]) {
-        let live = Set(sessions.map(\.id))
-        for (id, m) in members where !live.contains(id) && m.mode != .leave {
+        setRoster(sessions)
+        for (id, m) in members where id != Self.crowdID && rosterIndex[id] == nil && m.mode != .leave {
             var m = m
             m.mode = .leave
             m.timer = Motion.leaveTime
@@ -342,17 +408,49 @@ public final class CrewSim {
             m.emote = nil
             members[id] = m
         }
+        syncRoamers()
+    }
+
+    private func setRoster(_ sessions: [Session]) {
+        roster = sessions
+        rosterIndex = Dictionary(sessions.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
+        for s in sessions.prefix(Limits.roamers) { looks[s.id] = s.look }
+    }
+
+    /// The session's name as bubbles show it, if it's still around.
+    func name(_ id: String) -> String? { rosterIndex[id].map { Self.name(roster[$0]) } }
+
+    /// Port of `syncRoamers`: every roamer has a character out. One that was in the crowd steps out
+    /// of it ("My turn!"); a brand-new one drops in from above. More than `Limits.roamers` sessions
+    /// and no crowd: the crowd comes out.
+    func syncRoamers() {
         guard released else { return }
-        let scheduled = Set(pending.compactMap { if case .spawn(let id) = $0.action { id } else { nil } })
-        for s in sessions.prefix(Limits.roamers) {
-            looks[s.id] = s.look
-            guard members[s.id] == nil, !scheduled.contains(s.id) else { continue }
-            let to = randomSpot()
-            var m = newMember(s.id, look: s.look, x: to.x, y: to.y, scale: stage.scale)
-            m.z = stage.height * Motion.dropHeight
-            m.mode = .drop
-            members[s.id] = m
+        var scheduled = Set<String>(), crowdComing = false
+        for p in pending {
+            switch p.action {
+            case .spawn(let id): scheduled.insert(id)
+            case .spawnCrowd: crowdComing = true
+            default: break
+            }
         }
+        for s in roster.prefix(Limits.roamers) where members[s.id] == nil && !scheduled.contains(s.id) {
+            if let c = members[Self.crowdID], c.mode == .rest {
+                var m = newMember(s.id, look: s.look, x: c.x, y: c.y, scale: stage.scale)
+                let r = Motion.stepOutRadius
+                let to = (x: clamp(c.x + rand(-r...r), 36, stage.width - 36),
+                          y: clamp(c.y + rand(-r * 0.6...r * 0.6), stage.minY + 6, stage.bottom - 16))
+                launch(&m, to: to, duration: Motion.stepOutFlight, homeward: false, scaleTo: stage.scale)
+                m.bubble = Bubble(text: Phrases.myTurn, until: time + 1)
+                members[s.id] = m
+            } else {
+                let to = randomSpot()
+                var m = newMember(s.id, look: s.look, x: to.x, y: to.y, scale: stage.scale)
+                m.z = stage.height * Motion.dropHeight
+                m.mode = .drop
+                members[s.id] = m
+            }
+        }
+        if roster.count > Limits.roamers, members[Self.crowdID] == nil, !crowdComing { schedule(0, .spawnCrowd) }
     }
 
     // MARK: - Time
@@ -363,13 +461,16 @@ public final class CrewSim {
         time += dt
         var events: [CrewEvent] = []
         runPending(&events)
+        processNotices(sessions)
         for id in members.keys.sorted() { step(id, dt: dt, sessions: sessions, events: &events) }
         checkMeetings(dt)
         stepParticles(dt)
+        syncClock -= dt
+        if syncClock <= 0 { syncClock = Motion.rosterSync; syncRoamers() }
         return events
     }
 
-    private func schedule(_ delay: Double, _ a: Action) { pending.append((time + delay, a)) }
+    func schedule(_ delay: Double, _ a: Action) { pending.append((time + delay, a)) }
 
     private func runPending(_ events: inout [CrewEvent]) {
         guard pending.contains(where: { $0.at <= time }) else { return }
@@ -378,16 +479,18 @@ public final class CrewSim {
         for (_, p) in due {
             switch p.action {
             case .spawn(let id): spawnFromHome(id)
+            case .spawnCrowd: spawnCrowd()
             case .sendHome(let id): sendHome(id)
             case .forceHome(let t):
                 guard t == token, !released else { continue }
                 for (id, m) in members {
                     switch m.mode {
                     case .fly, .wait, .drop, .drag, .thrown: members[id] = nil
-                    case .leave, .rest: break
+                    case .leave, .rest, .walkIn, .hold, .walkOff: break
                     }
                 }
-                // `rest` can't happen after a recall, and `leave` ends on its own within 1.1 s.
+                // `rest` can't happen after a recall, `leave` ends on its own within 1.1 s, and
+                // walk-ons that came out since are meant to be there.
             }
         }
     }
@@ -396,6 +499,12 @@ public final class CrewSim {
     private func spawnFromHome(_ id: String) {
         guard released, let look = looks[id] else { return }
         if var m = members[id] {
+            // A walk-on joins the roamers where it stands.
+            if m.mode.isWalkOn {
+                m.mode = .rest; m.phase = .act; m.timer = 0.5; m.walkOn = nil
+                members[id] = m
+                return
+            }
             // Still out from before (flying home or waiting): turn around.
             if m.mode == .wait || { if case .fly(let f) = m.mode { f.homeward } else { false } }() {
                 let to = randomSpot()
@@ -422,7 +531,7 @@ public final class CrewSim {
     }
 
     /// Port of `Ent.launch`.
-    private func launch(_ m: inout CrewMember, to: (x: Double, y: Double), duration: Double, homeward: Bool, scaleTo: Double) {
+    func launch(_ m: inout CrewMember, to: (x: Double, y: Double), duration: Double, homeward: Bool, scaleTo: Double) {
         m.mode = .fly(Flight(duration: duration, from: (m.x, m.y), to: to, scaleFrom: m.scale, scaleTo: scaleTo, homeward: homeward))
         m.vz = Motion.gravity * duration / 2
         m.z = 0
@@ -436,7 +545,7 @@ public final class CrewSim {
         dust(x: m.x, y: m.y, count: 5)
     }
 
-    private func newMember(_ id: String, look: Look, x: Double, y: Double, scale: Double) -> CrewMember {
+    func newMember(_ id: String, look: Look, x: Double, y: Double, scale: Double) -> CrewMember {
         CrewMember(id: id, look: look, x: x, y: y, face: chance(0.5) ? 1 : -1, scale: scale, mode: .rest,
                    anim: rand(0...10), blinkT: rand(2...5), meetCd: rand(Motion.meetFirstCooldown))
     }
@@ -504,7 +613,15 @@ public final class CrewSim {
                 return
             }
         case .rest:
-            pose = roam(&m, dt: dt, session: sessions[id])
+            if id == Self.crowdID {
+                guard let p = roamCrowd(&m, dt: dt, sessions: sessions) else { members[id] = nil; return }
+                pose = p
+            } else {
+                pose = roam(&m, dt: dt, session: sessions[id])
+            }
+        case .walkIn, .hold, .walkOff:
+            guard let p = stepWalkOn(&m, dt: dt, session: sessions[id]) else { members[id] = nil; return }
+            pose = p
         case .drag:
             pose = .dangle
             m.z = Grab.lift
@@ -546,8 +663,9 @@ public final class CrewSim {
                 }
             }
         }
-        if m.mode != .rest { m.hop = 0 }
+        if m.mode != .rest && m.mode != .hold { m.hop = 0 }
         followWithSidekick(&m, dt: dt, session: sessions[id])
+        if id == Self.crowdID { updateCrowd(&m, sessions: sessions) }
 
         // Blink (prototype: every 2.5–5 s for 0.12 s, idle pose only).
         m.blinkT -= dt
@@ -719,7 +837,7 @@ public final class CrewSim {
     /// Port of the sidekick block of `updateEnt`: while the session has subagents, a mini-me pops in
     /// with yellow sparkles and follows a step behind; it poofs when they're done or the crew leaves.
     private func followWithSidekick(_ m: inout CrewMember, dt: Double, session: Session?) {
-        guard let s = session, !s.subagents.isEmpty, m.mode == .rest else {
+        guard let s = session, !s.subagents.isEmpty, m.mode == .rest || m.mode.isWalkOn else {
             if let side = m.side { sparkle(x: side.x, y: side.y - 8, count: 5); m.side = nil }
             return
         }
@@ -745,7 +863,7 @@ public final class CrewSim {
     }
 
     /// Port of `walkTo`: true when it has arrived.
-    private func walk(_ m: inout CrewMember, dt: Double, speed: Double) -> Bool {
+    func walk(_ m: inout CrewMember, dt: Double, speed: Double) -> Bool {
         let dx = m.tx - m.x, dy = m.ty - m.y, d = hypot(dx, dy)
         if d < 2 { m.x = m.tx; m.y = m.ty; return true }
         let step = min(d, speed * dt)
@@ -755,7 +873,7 @@ public final class CrewSim {
         return false
     }
 
-    private func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { max(lo, min(hi, v)) }
+    func clamp(_ v: Double, _ lo: Double, _ hi: Double) -> Double { max(lo, min(hi, v)) }
 
     /// Prototype `FPS`.
     static let fps: [Pose: Double] = [
@@ -840,17 +958,17 @@ public final class CrewSim {
 
     // MARK: - Randomness (seeded)
 
-    private func randomSpot() -> (x: Double, y: Double) {
+    func randomSpot() -> (x: Double, y: Double) {
         (rand(40...max(40, stage.width - 40)), rand((stage.minY + 10)...max(stage.minY + 10, stage.bottom - 18)))
     }
 
-    private func rand(_ r: ClosedRange<Double>) -> Double {
+    func rand(_ r: ClosedRange<Double>) -> Double {
         r.lowerBound + Double(rng.next() >> 11) / Double(1 << 53) * (r.upperBound - r.lowerBound)
     }
 
-    private func chance(_ p: Double) -> Bool { rand(0...1) < p }
+    func chance(_ p: Double) -> Bool { rand(0...1) < p }
 
-    private func pick<T>(_ a: [T]) -> T { a[Int(rng.next() % UInt64(a.count))] }
+    func pick<T>(_ a: [T]) -> T { a[Int(rng.next() % UInt64(a.count))] }
 }
 
 /// Small seeded generator for the crew's randomness (SplitMix64).

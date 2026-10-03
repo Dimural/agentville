@@ -14,7 +14,7 @@ Prompts, Claude's replies, tool inputs and outputs, commands, file paths, file c
 
 - From the hook to the app over a **local Unix-domain socket** in the user's private temp directory. It never touches a network interface.
 - The app keeps session state **in memory only**. On quit, it's gone.
-- **On disk:** only preferences (`UserDefaults`). If the user picks the settings-file install path, also a backup of `~/.claude/settings.json` that they can see and delete, and a symlink to the helper.
+- **On disk:** only preferences (`UserDefaults`, written only by `Sources/Agentville/Preferences.swift`; today one key, `announceDone`). If the user picks the settings-file install path, also a backup of `~/.claude/settings.json` that they can see and delete, and a symlink to the helper.
 - **Network:** none. There is no networking code to send anything anywhere.
 
 ## Things that are visible on screen

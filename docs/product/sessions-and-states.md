@@ -34,8 +34,8 @@ Consequences:
 | **working(activity)** | `UserPromptSubmit` → `thinking`; `PreToolUse` → activity from the tool; `PostToolUse` / `PostToolUseFailure` → `thinking` | Desk pose + matching monitor screen | Activity pose | Nothing |
 | **needsYou** | `PermissionRequest`; `Notification(permission_prompt)`; `Notification(elicitation_dialog / elicitation_url_dialog / agent_needs_input)` | Stands, waves, `!` emote, flashing red screen | Runs to the bottom of the screen, waves, `!` + "Needs you" | Walk-on, "Needs you" |
 | **finished** | `Stop` | Cheers, check emote, green screen | Confetti, "Done! · duration" | Walk-on, "Done!" (subject to the announce rule) |
-| **error** | `StopFailure` | Slumps and scratches its head under a storm cloud; red cross on the monitor | Same pose and storm cloud between wanders | Optional walk-on (M6) |
-| **gone** | `SessionEnd`, or the staleness rule | Removed | Waves "Bye!", then a sparkle and dust poof | Nothing |
+| **error** | `StopFailure` | Slumps and scratches its head under a storm cloud; red cross on the monitor | Same pose and storm cloud between wanders | Nothing (open question 15) |
+| **gone** | `SessionEnd`, or the staleness rule | Removed | Waves "Bye!", then a sparkle and dust poof | A walk-on that's out waves "Bye!" too |
 
 Leaving **needsYou**: the next `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `UserPromptSubmit` or `Stop` for that session means the user answered.
 
@@ -56,7 +56,7 @@ A killed terminal sends no `SessionEnd`. The silence limit depends on the last e
 | anything else, while working | 15 min |
 | idle | 45 min |
 
-The store exposes `prune(now:)`. The app calls it about once every 10 s.
+`SessionStore.tick(now:)` applies these (and finished → idle). The app calls it every `Timing.storeTick` (5 s). A pruned session leaves the screen like an ended one: its character waves "Bye!" and poofs, and if it was a roamer the next session steps out of the crowd.
 
 ## Tool → activity mapping
 
@@ -79,7 +79,7 @@ Tool names come from Claude Code and change over time. **Verify** them against t
 
 ## "Done" announcement rule
 
-`Stop` fires at the end of **every turn**. The walk-on is governed by a setting (open question 1). Proposed default: **announce when the turn lasted ≥ 20 s**. Inside the office, every `Stop` shows the cheer.
+`Stop` fires at the end of **every turn**. The walk-on is governed by a setting (open question 1): `DoneAnnouncement` = **every turn**, **long turns** (≥ `Timing.announceDoneMinTurn`, 20 s; the default) or **never**. The store applies it (`SessionStore.announceDone`) and marks each `finished` effect `announce: true/false`; only the walk-on (crew inside) follows it. Inside the office, every `Stop` shows the cheer, and a roaming character always cheers with its Done! bubble. A turn whose start wasn't seen (hooks installed mid-turn) counts as short. Until the Settings window (M7) the choice is in the status menu: **Announce Finished Turns** ▸ Every Turn / Turns of 20 s or More / Never.
 
 ## Done when
 

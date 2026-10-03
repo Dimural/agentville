@@ -21,3 +21,7 @@ swift run agentville-replay --generate burst --seconds 5 --rate 2000     # event
 | `silent.jsonl` | a killed terminal (no SessionEnd) is pruned |
 | `malformed.jsonl` | broken and hostile datagrams are dropped |
 | `desktop-tour.jsonl` | M4 on the desktop: every activity, a sidekick of 3, Done!, Needs you, a sleeper (release the crew first, or run the app with `--release-crew`) |
+| `walk-ons.jsonl` | M6 with the crew **inside**: Done! and Needs you walk-ons, the 20 s announce rule, "+2 more" folding, Bye! |
+| `crowd.jsonl` | M6 with the crew **out**: 16 sessions, the crowd and its count, "My turn!", the crowd poofing and coming back |
+
+The M6 files' header comments say what the crew should do; `CrewScenarioTests` checks them against `CrewSim`.

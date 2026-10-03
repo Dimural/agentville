@@ -7,8 +7,8 @@ public final class SessionStore {
         public var active = 0, needYou = 0, justFinished = 0
     }
 
-    /// Announce "done" walk-ons only for turns at least this long (open question 1).
-    public var announceMinTurn: TimeInterval = Timing.announceDoneMinTurn
+    /// Which finished turns get a "Done!" walk-on (open question 1); the app sets it from preferences.
+    public var announceDone = DoneAnnouncement.longTurns
 
     public private(set) var sessions: [String: Session] = [:]
     /// Insertion order: desk assignment and list order.
@@ -106,7 +106,7 @@ public final class SessionStore {
             let duration = s.turnStartedAt.map { max(0, now - $0) }
             s.status = .finished; s.tool = nil; s.subagents.removeAll()
             s.lastTurnDuration = duration; s.finishedAt = now; s.turnStartedAt = nil
-            fx.append(.finished(id: id, duration: duration, announce: (duration ?? 0) >= announceMinTurn))
+            fx.append(.finished(id: id, duration: duration, announce: announceDone.announces(duration)))
 
         case .stopFailure:
             s.status = .error; s.tool = nil; s.subagents.removeAll(); s.turnStartedAt = nil

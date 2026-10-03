@@ -1,0 +1,53 @@
+// M6 crowd: release the crew first (or run the app with --release-crew), then replay.
+// 16 sessions: 12 roam, and the crowd (three half-size characters, an orange "+4") comes out after them.
+// 6 s: two crowd members need you → "+4 / 2 need you" under a !. 12 s: one finishes → "homelab finished" with confetti.
+// 18 s: a roamer's terminal closes → it waves Bye! and the first in the crowd steps out ("My turn!").
+// 24 s: three more close → three more step out; the crowd is empty and poofs.
+// 30 s: two new sessions start → 14 sessions, so the crowd comes back with "+2".
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-00", "project": "api-server"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-00", "project": "api-server", "tool": "Edit"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-01", "project": "pixel-crew"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-01", "project": "pixel-crew", "tool": "Bash"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-02", "project": "blog"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-02", "project": "blog", "tool": "Read"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-03", "project": "ml-notebook"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-03", "project": "ml-notebook", "tool": "Grep"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-04", "project": "dotfiles"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-04", "project": "dotfiles", "tool": "WebFetch"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-05", "project": "ios-app"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-06", "project": "infra"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-06", "project": "infra", "tool": "TodoWrite"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-07", "project": "docs-site"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-07", "project": "docs-site", "tool": "mcp"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-08", "project": "payments"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-08", "project": "payments", "tool": "Edit"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-09", "project": "game-jam"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-09", "project": "game-jam", "tool": "Bash"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-10", "project": "scraper"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-10", "project": "scraper", "tool": "Read"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-11", "project": "cli-tool"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-11", "project": "cli-tool", "tool": "Grep"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-12", "project": "portfolio"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-12", "project": "portfolio", "tool": "WebFetch"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-13", "project": "chess-bot"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-14", "project": "recipe-app"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-14", "project": "recipe-app", "tool": "TodoWrite"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "cr-15", "project": "homelab"}
+{"at": 0.0, "event": "PreToolUse", "session": "cr-15", "project": "homelab", "tool": "mcp"}
+{"at": 6.0, "event": "PermissionRequest", "session": "cr-13", "project": "chess-bot", "tool": "Bash"}
+{"at": 6.0, "event": "PermissionRequest", "session": "cr-14", "project": "recipe-app", "tool": "Edit"}
+{"at": 6.1, "expect": {"session": "cr-14", "status": "needsYou"}}
+{"at": 12.0, "event": "Stop", "session": "cr-15", "project": "homelab"}
+{"at": 12.1, "expect": {"session": "cr-15", "status": "finished"}}
+{"at": 18.0, "event": "SessionEnd", "session": "cr-02", "project": "blog", "reason": "prompt_input_exit"}
+{"at": 18.1, "expect": {"session": "cr-02", "status": "gone"}}
+{"at": 24.0, "event": "SessionEnd", "session": "cr-04", "project": "dotfiles", "reason": "prompt_input_exit"}
+{"at": 24.0, "event": "SessionEnd", "session": "cr-06", "project": "infra", "reason": "prompt_input_exit"}
+{"at": 24.0, "event": "SessionEnd", "session": "cr-08", "project": "payments", "reason": "prompt_input_exit"}
+{"at": 24.1, "expect": {"session": "cr-08", "status": "gone"}}
+{"at": 24.1, "expect": {"session": "cr-13", "status": "needsYou"}}
+{"at": 30.0, "event": "UserPromptSubmit", "session": "cr-16", "project": "data-pipeline"}
+{"at": 30.0, "event": "PreToolUse", "session": "cr-16", "project": "data-pipeline", "tool": "Edit"}
+{"at": 30.0, "event": "UserPromptSubmit", "session": "cr-17", "project": "auth-service"}
+{"at": 30.0, "event": "PreToolUse", "session": "cr-17", "project": "auth-service", "tool": "Edit"}
+{"at": 30.1, "expect": {"session": "cr-17", "status": "working:editing"}}

@@ -55,13 +55,14 @@ struct CrewSimTests {
         #expect(sim.members.count == 4)
     }
 
-    @Test("At most 12 leave the desks")
+    @Test("At most 12 leave the desks; the rest come out as the crowd")
     func cap() {
         let store = Self.sessions(20), sim = Self.sim(store)
         sim.release(store.ordered)
         Self.run(sim, store, until: 4)
-        #expect(sim.members.count == Limits.roamers)
-        #expect(Set(sim.members.keys) == Set(store.ordered.prefix(12).map(\.id)))
+        #expect(sim.awayIDs.count == Limits.roamers)
+        #expect(sim.awayIDs == Set(store.ordered.prefix(12).map(\.id)))
+        #expect(sim.members[CrewSim.crowdID]?.crowd?.count == 8)
     }
 
     @Test("Flight: starts at home scale, arcs up, stretched; lands at desktop scale with squash and dust")

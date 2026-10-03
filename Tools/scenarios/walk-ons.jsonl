@@ -1,0 +1,36 @@
+// M6 walk-ons: leave the crew INSIDE (don't release it), then replay. Default announce rule (turns of 20 s or more).
+// 22 s: blog finishes a long turn → a Done! walk-on from the right edge (confetti, "blog · 22s").
+// 24 s: dotfiles needs you → a second walk-on waves under a red ! until 30 s, when it's answered and walks off.
+// 27 s: quick finishes a 2 s turn → no walk-on (the office still cheers).
+// 40 s: three long turns finish at once → one walk-on, "· +2 more".
+// 45 s: chess-bot needs you; its terminal is closed at 48 s → it waves Bye! and poofs.
+{"at": 0.0, "event": "UserPromptSubmit", "session": "wo-blog", "project": "blog"}
+{"at": 0.0, "event": "PreToolUse", "session": "wo-blog", "project": "blog", "tool": "Edit"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "wo-dot", "project": "dotfiles"}
+{"at": 0.0, "event": "PreToolUse", "session": "wo-dot", "project": "dotfiles", "tool": "Bash"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "wo-api", "project": "api-server"}
+{"at": 0.0, "event": "PreToolUse", "session": "wo-api", "project": "api-server", "tool": "Read"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "wo-infra", "project": "infra"}
+{"at": 0.0, "event": "PreToolUse", "session": "wo-infra", "project": "infra", "tool": "Bash"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "wo-docs", "project": "docs-site"}
+{"at": 0.0, "event": "PreToolUse", "session": "wo-docs", "project": "docs-site", "tool": "Grep"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "wo-chess", "project": "chess-bot"}
+{"at": 0.0, "event": "PreToolUse", "session": "wo-chess", "project": "chess-bot", "tool": "WebFetch"}
+{"at": 22.0, "event": "Stop", "session": "wo-blog", "project": "blog"}
+{"at": 22.1, "expect": {"session": "wo-blog", "status": "finished"}}
+{"at": 24.0, "event": "PermissionRequest", "session": "wo-dot", "project": "dotfiles", "tool": "Bash"}
+{"at": 24.1, "expect": {"session": "wo-dot", "status": "needsYou"}}
+{"at": 25.0, "event": "UserPromptSubmit", "session": "wo-quick", "project": "quick"}
+{"at": 26.0, "event": "PreToolUse", "session": "wo-quick", "project": "quick", "tool": "Read"}
+{"at": 27.0, "event": "Stop", "session": "wo-quick", "project": "quick"}
+{"at": 27.1, "expect": {"session": "wo-quick", "status": "finished"}}
+{"at": 30.0, "event": "PreToolUse", "session": "wo-dot", "project": "dotfiles", "tool": "Bash"}
+{"at": 30.1, "expect": {"session": "wo-dot", "status": "working:running"}}
+{"at": 40.0, "event": "Stop", "session": "wo-api", "project": "api-server"}
+{"at": 40.0, "event": "Stop", "session": "wo-infra", "project": "infra"}
+{"at": 40.0, "event": "Stop", "session": "wo-docs", "project": "docs-site"}
+{"at": 40.1, "expect": {"session": "wo-docs", "status": "finished"}}
+{"at": 45.0, "event": "PermissionRequest", "session": "wo-chess", "project": "chess-bot", "tool": "WebFetch"}
+{"at": 45.1, "expect": {"session": "wo-chess", "status": "needsYou"}}
+{"at": 48.0, "event": "SessionEnd", "session": "wo-chess", "project": "chess-bot", "reason": "prompt_input_exit"}
+{"at": 48.1, "expect": {"session": "wo-chess", "status": "gone"}}

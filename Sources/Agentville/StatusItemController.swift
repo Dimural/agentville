@@ -1,7 +1,8 @@
 // The menu bar item: pixel head, session count, red dot when anything needs you
 // (docs/product/user-experience.md#menu-bar-item). Port of the prototype's `.mb-crew` button.
 // Left click drops the desk panel down; right click (or ⌃-click) opens the menu
-// (docs/decisions/0009-desk-panel-dropdown.md). Release/recall (M3) and Settings (M7) join later.
+// (docs/decisions/0009-desk-panel-dropdown.md). Settings (M7) joins later; until then the done
+// announcement rule (open question 1) is a submenu here.
 import AgentvilleCore
 import AppKit
 
@@ -12,6 +13,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let keepOpen = NSMenuItem(title: "Keep Panel Open", action: nil, keyEquivalent: "")
     private let crewItem = NSMenuItem(title: "Release the crew", action: nil, keyEquivalent: "")
+    private let announceItems: [(DoneAnnouncement, NSMenuItem)] = [
+        (.everyTurn, NSMenuItem(title: "Every Turn", action: nil, keyEquivalent: "")),
+        (.longTurns, NSMenuItem(title: "Turns of \(Int(Timing.announceDoneMinTurn)) s or More", action: nil, keyEquivalent: "")),
+        (.never, NSMenuItem(title: "Never", action: nil, keyEquivalent: "")),
+    ]
+    /// The user picked when finished turns walk on.
+    var onAnnounceChange: ((DoneAnnouncement) -> Void)?
     /// Release / call back, and whether the crew is out (for the item's title).
     var onToggleCrew: (() -> Void)?
     var isReleased: () -> Bool = { false }
@@ -54,6 +62,15 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         keepOpen.target = self
         keepOpen.action = #selector(togglePin)
         menu.addItem(keepOpen)
+        let announce = NSMenuItem(title: "Announce Finished Turns", action: nil, keyEquivalent: "")
+        announce.submenu = NSMenu()
+        for (rule, item) in announceItems {
+            item.target = self
+            item.action = #selector(pickAnnounce(_:))
+            item.representedObject = rule.rawValue
+            announce.submenu?.addItem(item)
+        }
+        menu.addItem(announce)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Agentville", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
@@ -133,6 +150,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         keepOpen.state = isPinned() ? .on : .off
         crewItem.title = isReleased() ? "Call the crew back" : "Release the crew"
+        let current = Preferences.announceDone
+        for (rule, item) in announceItems { item.state = rule == current ? .on : .off }
+    }
+
+    @objc private func pickAnnounce(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let rule = DoneAnnouncement(rawValue: raw) else { return }
+        Preferences.announceDone = rule
+        onAnnounceChange?(rule)
     }
 
     @objc private func toggleCrew() { onToggleCrew?() }

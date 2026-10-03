@@ -59,9 +59,24 @@ Purpose: every number that shapes how the crew moves and behaves, copied from th
 
 ## Notices (walk-ons while the crew is inside)
 
-- Slots: **3** (W ≥ 900), 2 (W ≥ 560), 1 otherwise. Slot k stands at x = `W − 80 − k·130`, y = `H − 22 − k·6`.
-- Done hold: **6.5 s** (cheer 2.4 s, 30 confetti). Needs-you hold: up to **16 s**, or until it's no longer waiting.
-- Queue cap: 24 (overflow counts toward "+N more"). Done notices fold into "+N more" when ≥ 2 are pending.
+Code: `CrewSim+WalkOns.swift`; tests: `CrewNoticeTests`.
+
+- Walk on from x = `W + 30` at 95 pt/s, facing left; walk off to `W + 40` at 110 pt/s. A slot is taken from walking in until it has walked off.
+- Slots: **3** (W ≥ 900), 2 (W ≥ 560), 1 otherwise. Slot k stands at x = `W − 80 − k·130`, y = `H − 22 − k·6`, where H is the bottom of the usable screen (above the Dock).
+- Done hold: **6.5 s** (cheer 2.4 s with a check emote, 30 confetti on arrival, "Done!" over "name · turn time"). Needs-you hold: waves and hops under `!` with "Needs you" over "name is waiting for permission", up to **16 s**, or until it's no longer waiting (checked once it has arrived).
+- Queue cap: 24 (overflow counts toward "+N more"). Done notices fold into "+N more" when ≥ 2 are pending. A session isn't queued twice for the same kind; a needs-you answered while queued, or a session whose character is already out, is skipped.
+- Grabbing: a tap sends a walk-on home; a thrown one lands and walks off. Releasing the crew turns walk-ons into roamers where they stand.
+
+## The crowd (sessions beyond the 12th)
+
+Code: `CrewSim+Crowd.swift`; tests: `CrewCrowdTests`.
+
+- Comes out 60 ms after the last roamer (or as soon as a 13th session appears while the crew is out), flying 1.1 s from the session list (or the menu bar icon) to a random spot.
+- Drawn as its first three members at one size smaller, offset (−9, 2), (9, 3), (0, −2) pixels, alternately facing each way; an orange **"+N"** bubble, with "N need you" under it and a `!` while any member waits. Its members never walk on.
+- Wanders at 22 pt/s, up to 160 pt away, resting 3–6 s between walks.
+- A member's finished turn: the crowd says "name finished" for 2.4 s, with 12 confetti.
+- When a roamer's session ends (or goes stale), the first in the crowd steps out: a 0.7 s hop to within 140 pt, "My turn!". Roamers are re-synced every 0.25 s. When nobody is left in it, the crowd vanishes in 10 sparkles.
+- Grabbing: hit box `16·S` either side; a tap lets it carry on wandering; a throw never makes it dizzy or shout.
 
 ## Limits
 

@@ -70,6 +70,21 @@ struct SessionStoreTests {
         #expect(st.apply(ev(.stop), now: 50).contains(.finished(id: "s1", duration: nil, announce: false)))
     }
 
+    @Test("The done-announcement setting: every turn, long turns (≥ 20 s, the default), or never")
+    func announceSetting() {
+        #expect(SessionStore().announceDone == .longTurns)
+        func announced(_ rule: DoneAnnouncement, turn: TimeInterval?) -> Bool {
+            let st = SessionStore()
+            st.announceDone = rule
+            if let turn { st.apply(ev(.userPromptSubmit), now: 100 - turn) } else { st.apply(ev(.sessionStart), now: 0) }
+            return st.apply(ev(.stop), now: 100).contains { if case .finished(_, _, true) = $0 { true } else { false } }
+        }
+        #expect(announced(.longTurns, turn: 20) && !announced(.longTurns, turn: 19.9) && !announced(.longTurns, turn: nil))
+        #expect(announced(.everyTurn, turn: 1) && announced(.everyTurn, turn: nil))
+        #expect(!announced(.never, turn: 600))
+        #expect(DoneAnnouncement.allCases.map(\.rawValue) == ["every", "long", "never"])
+    }
+
     @Test("Hooks installed mid-turn: first tool event starts the clock")
     func midTurn() {
         let st = SessionStore()

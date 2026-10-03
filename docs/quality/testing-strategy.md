@@ -40,6 +40,11 @@ Scenario files carry `expect` lines, so they are **executable specs**: `Scenario
 | `long-bash.jsonl` | `PreToolUse(Bash)` then 20 minutes of silence |
 | `malformed.jsonl` | malformed, wrong-version, unknown-event and hostile messages |
 | `subagents.jsonl` | several subagents starting and stopping |
+| `desktop-tour.jsonl` | M4: every activity on the desktop, a sidekick of 3, Done!, Needs you, a sleeper |
+| `walk-ons.jsonl` | M6, crew inside: a Done! walk-on, Needs you until answered, no walk-on for a short turn, "+2 more", Bye! |
+| `crowd.jsonl` | M6, crew out: 16 sessions → the crowd ("+4", "2 need you", "homelab finished"), "My turn!", the crowd poofs and comes back |
+
+`CrewScenarioTests` also replays `walk-ons.jsonl` and `crowd.jsonl` through the store **and** `CrewSim`, and checks what their header comments promise the crew does.
 
 ## Running
 

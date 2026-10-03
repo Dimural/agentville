@@ -75,10 +75,17 @@ final class OverlayController {
         wake()
     }
 
+    /// Always passed on: the sim needs the order for the crowd and the names for walk-ons. It only
+    /// wakes the overlay when someone is out (or about to be).
     func sessionsChanged(_ sessions: [Session]) {
-        guard !sim.members.isEmpty || sim.released else { return }
         sim.sessionsChanged(sessions)
-        wake()
+        if !sim.isIdle { wake() }
+    }
+
+    /// Store effects: finished turns and sessions that need you may walk on (crew inside).
+    func notify(_ effects: [StoreEffect]) {
+        sim.notify(effects)
+        if !sim.isIdle { wake() }
     }
 
     func close() {
@@ -216,10 +223,16 @@ final class CrewScene: SKScene {
             drawSidekick(m, n, H: H, sim: sim)
 
             let hl = sim.grabMode
-            let tex = textures.sprite(m.look, m.drawPose, frame: m.frame, highlight: hl)
-            if n.sprite.texture !== tex { n.sprite.texture = tex }
             let a = CGFloat(m.alpha)
+            if let crowd = m.crowd {
+                n.sprite.isHidden = true
+                drawCrowd(m, crowd, n, H: H, highlight: hl)
+            } else {
+                let tex = textures.sprite(m.look, m.drawPose, frame: m.frame, highlight: hl)
+                if n.sprite.texture !== tex { n.sprite.texture = tex }
+            }
             n.sprite.alpha = a; n.emote.alpha = a; n.side.alpha = a; n.badge.alpha = a
+            for c in n.crowd { c.alpha = a }
             n.bubble.alpha = max(0.15, a)
             for sh in [n.shadow1, n.shadow2, n.sideShadow1, n.sideShadow2] { sh.alpha = Self.shadowAlpha * a }
             drawDizzy(m, n, H: H)
@@ -231,7 +244,7 @@ final class CrewScene: SKScene {
 
             if let e = m.emote {
                 let s = max(1, sc - 1).rounded()
-                let cx = m.x + m.face * 2 * sc, bottom = m.y - lift - 25 * sc
+                let cx = m.x + (m.crowd == nil ? m.face * 2 * sc : 0), bottom = m.y - lift - 25 * sc
                 n.emote.isHidden = false
                 n.emote.texture = textures.emote(e)
                 n.emote.setScale(CGFloat(s))
@@ -263,6 +276,25 @@ final class CrewScene: SKScene {
         }
         drawParticles(sim.particles, scale: sim.stage.scale, H: H)
         drawHud(sim, H: H)
+    }
+
+    /// The crowd (its part of `drawEnt`): its first three members at one size smaller, overlapping,
+    /// alternately facing each way, walking or standing together.
+    @MainActor
+    private func drawCrowd(_ m: CrewMember, _ crowd: Crowd, _ n: MemberNodes, H: CGFloat, highlight: Bool) {
+        let cs = max(1, m.scale - 1), lift = m.z + m.hop
+        for (i, node) in n.crowd.enumerated() {
+            guard i < crowd.looks.count else { node.isHidden = true; continue }
+            node.isHidden = false
+            let tex = textures.sprite(crowd.looks[i], crowd.pose, frame: crowd.frames[i], highlight: highlight)
+            if node.texture !== tex { node.texture = tex }
+            let off = Crowd.offsets[i]
+            node.xScale = CGFloat((i % 2 == 1 ? -m.face : m.face) * cs)
+            node.yScale = CGFloat(cs)
+            node.position = CGPoint(x: (m.x + off.x * cs).rounded(), y: H - (m.y - lift + off.y * cs).rounded())
+            // Drawn in order, like the prototype: the third (centre, highest) member last.
+            node.zPosition = 2 + CGFloat(m.y) / 100_000 + CGFloat(i) / 10_000_000
+        }
     }
 
     /// Two yellow stars circling the head of a dizzy character (the `dizzy` part of `drawEnt`).
@@ -417,7 +449,9 @@ final class CrewScene: SKScene {
         let stars = [SKSpriteNode(), SKSpriteNode()]
         let emote = SKSpriteNode()
         let bubble = SKSpriteNode()
-        private var all: [SKSpriteNode] { [shadow1, shadow2, sideShadow1, sideShadow2, side, sprite, badge, emote, bubble] + stars }
+        /// The crowd's three members (hidden for everyone else).
+        let crowd = (0..<Crowd.offsets.count).map { _ in MemberNodes.spriteNode() }
+        private var all: [SKSpriteNode] { [shadow1, shadow2, sideShadow1, sideShadow2, side, sprite, badge, emote, bubble] + stars + crowd }
 
         /// Feet at pixel (AX, AY) from the top-left (prototype drawImage(img, −AX, −AY)).
         static func spriteNode() -> SKSpriteNode {
@@ -437,6 +471,7 @@ final class CrewScene: SKScene {
             bubble.zPosition = 4
             side.isHidden = true; badge.isHidden = true; sideShadow1.isHidden = true; sideShadow2.isHidden = true
             for s in stars { s.anchorPoint = CGPoint(x: 0, y: 1); s.zPosition = 3; s.isHidden = true }
+            for c in crowd { c.isHidden = true }
         }
 
         func add(to scene: SKScene) { for n in all { scene.addChild(n) } }
@@ -545,7 +580,7 @@ enum BubbleArt {
 
     private static func draw(_ b: Bubble) -> (NSImage, CGSize, CGFloat) {
         let text = b.text
-        let ink: NSColor = switch b.kind { case .say: Theme.pixDark; case .done: doneInk; case .wait: waitInk }
+        let ink: NSColor = switch b.kind { case .say, .count: Theme.pixDark; case .done: doneInk; case .wait: waitInk }
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 14, weight: .bold), .foregroundColor: ink]
         // `.bub .s`: 12 px at 80% opacity, under the title.
         let subAttrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 12, weight: .medium),
@@ -560,15 +595,17 @@ enum BubbleArt {
             let boxRect = CGRect(origin: o, size: box)
             NSColor(srgbRed: 26 / 255, green: 19 / 255, blue: 48 / 255, alpha: 0.28).setFill()
             boxRect.offsetBy(dx: 3, dy: 4).insetBy(dx: -2, dy: -2).fill()
+            // `.bub.count`: the crowd's bubble is orange, tail and all.
+            let paper = b.kind == .count ? Theme.accent : Theme.pixPaper
             Theme.pixDark.setFill()
             boxRect.insetBy(dx: -2, dy: -2).fill()
-            Theme.pixPaper.setFill()
+            paper.setFill()
             boxRect.fill()
             // Tail: 8×4 paper with 2 pt ink sides, then a 4×2 ink tip.
             let cx = boxRect.midX
             Theme.pixDark.setFill()
             CGRect(x: cx - 4, y: boxRect.maxY + 2, width: 8, height: 4).fill()
-            Theme.pixPaper.setFill()
+            paper.setFill()
             CGRect(x: cx - 2, y: boxRect.maxY, width: 4, height: 6).fill()
             Theme.pixDark.setFill()
             CGRect(x: cx - 2, y: boxRect.maxY + 6, width: 4, height: 2).fill()

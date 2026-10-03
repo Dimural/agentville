@@ -17,9 +17,10 @@ Purpose: everything the user sees and does, in order. The prototype is the refer
 
 It shows a pixel head, the active session count, and a red dot when any session needs the user. **Left click** drops the desk panel down below it ([0009](../decisions/0009-desk-panel-dropdown.md)). **Right click** (or ⌃-click, or the panel's "⋯" button) opens its menu:
 
-- **Keep Panel Open** (the panel's pin)
 - **Release the crew / Call the crew back** (⌃⌥C)
-- **Settings…**
+- **Keep Panel Open** (the panel's pin)
+- **Announce Finished Turns** ▸ Every Turn / Turns of 20 s or More / Never (moves into Settings in M7)
+- **Settings…** (M7)
 - **Quit Agentville** (⌘Q)
 
 The menu header shows "N sessions".
@@ -52,11 +53,13 @@ The list re-renders **at most 4× per second**, however many events arrive.
 3. Speech bubble: **"Done!"** over `project-name · 4m 15s`.
 4. After about 6.5 s it walks back off the edge (110 pt/s).
 
-Extra "done" notices fold into the newest bubble as **"+N more"**. Whether *every* turn announces is a setting (open question 1). Inside the office, every `Stop` still shows the cheer.
+Extra "done" notices fold into the newest bubble as **"+N more"**. Whether *every* turn announces is a setting (open question 1; default: turns of 20 s or more). Inside the office, every `Stop` still shows the cheer.
+
+While the crew is **out**, there are no walk-ons: a roaming character cheers where it stands, and a session in the crowd is announced by the crowd ("api-server finished").
 
 ## When a session needs permission (crew inside)
 
-Same walk-on, but the character **waves and jumps under a red `!`** with a **"Needs you"** bubble ("project is waiting for permission"). It stays until the session stops waiting, up to 16 s in the prototype; the real limit is a setting.
+Same walk-on, but the character **waves and jumps under a red `!`** with a **"Needs you"** bubble ("project is waiting for permission"). It stays until the session stops waiting, for at most 16 s (as in the prototype), then walks off.
 
 At most **3 walk-ons at once** (2 on screens narrower than 900 pt, 1 below 560 pt). A tap on a walk-on (in grab mode) sends it home.
 

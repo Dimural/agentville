@@ -4,7 +4,7 @@ Purpose: decisions that are the owner's to make. Each has a **proposed default**
 
 | # | Question | Needed by | Proposed default | Answer |
 |---|---|---|---|---|
-| 1 | **When to announce "done"?** Every turn, only turns ≥ N s, only when no terminal/IDE is frontmost, or a combination | M6 | Turns ≥ **20 s**; setting offers "every turn / long turns / never" | |
+| 1 | **When to announce "done"?** Every turn, only turns ≥ N s, only when no terminal/IDE is frontmost, or a combination | M6 | Turns ≥ **20 s**; setting offers "every turn / long turns / never". Built in M6 as proposed (`DoneAnnouncement`; status menu → Announce Finished Turns until Settings in M7) | |
 | 2 | **Click a walk-on to jump to its terminal?** Needs Accessibility/Automation, which conflicts with non-negotiable #9 | M6 | **Leave out** of 1.0 | |
 | 3 | **Signing and distribution.** A paid Apple Developer account for notarized builds, or unsigned with instructions? Tap name and owner account? | M8 | Unsigned first, with README instructions; tap `Dimural/homebrew-tap` | |
 | 4 | **Name and licence.** Confirm "Agentville" is free on GitHub, Homebrew and the App Store; confirm MIT | M0 | Agentville + MIT ([0001](0001-name-agentville.md), [0002](0002-mit-license.md)) | Name chosen by owner |
@@ -18,3 +18,4 @@ Purpose: decisions that are the owner's to make. Each has a **proposed default**
 | 12 | **New poses**: Error, clipboard (planning), MCP gadget; how several subagents look | M4 | Fallback poses until drawn (error and planning think, MCP tinkers); several subagents = one mini-me + count badge (built in M4 on the desktop: `Sidekick.count`) || **Answered 2026-10-03**: draw all three. `plan` (clipboard), `tinker` (gadget and wrench), `error` (head scratch under a new `storm` emote), in the office and on the desktop; several subagents = one mini-me + count badge |
 | 13 | **Settings scope** | M7 | Launch at login (off), shortcut, done rule, displays, Spaces/full-screen, hide names, Disconnect, Diagnostics | |
 | 14 | **Twins** (several sessions in one folder): number badge or a changed accessory? | M2 | Small number badge | **Accepted 2026-10-02**: a small number badge (2, 3…) after the name in the list and on the desk's nameplate in the office |
+| 15 | **A walk-on for a failed turn (`StopFailure`)?** The states table had "optional walk-on". The prototype has none | M6 | **No walk-on**: the office (storm cloud, red cross) and the list's Error chip show it; revisit if failures go unnoticed | |

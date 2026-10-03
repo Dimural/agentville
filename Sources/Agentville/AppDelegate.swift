@@ -1,5 +1,5 @@
-// Lifecycle and ownership: socket listener → session store → status item and desk panel.
-// The overlay arrives in M3 (docs/process/milestones.md).
+// Lifecycle and ownership: socket listener → session store → status item, desk panel and the
+// crew's overlay (roamers, the crowd and walk-ons).
 import AgentvilleCore
 import AppKit
 
@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     static func now() -> TimeInterval { ProcessInfo.processInfo.systemUptime }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        store.announceDone = Preferences.announceDone
         buildStatusItem()
         startListening()
         hotKey = HotKey { [weak self] in self?.toggleCrew() }
@@ -86,14 +87,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func ingest(_ batch: [WireEvent]) {
         let now = Self.now()
         let before = store.order
-        for e in batch { store.apply(e, now: now) }
-        // Walk-ons and cheers (store effects) are consumed in M4/M6; for now the UI reflects state.
+        var effects: [StoreEffect] = []
+        for e in batch { effects += store.apply(e, now: now) }
         if store.order != before { overlay?.sessionsChanged(store.ordered) }
+        // Finished turns and sessions that need you walk on while the crew is inside (M6).
+        if Self.wantsWalkOn(effects) { crew().notify(effects) } else { overlay?.notify(effects) }
         scheduleRefresh()
+    }
+
+    /// Anything that may bring a character out while the crew is inside. The overlay is built on
+    /// first need, so an app that never shows anyone never creates it.
+    private static func wantsWalkOn(_ effects: [StoreEffect]) -> Bool {
+        effects.contains {
+            switch $0 {
+            case .finished(_, _, let announce): announce
+            case .needsYou: true
+            default: false
+            }
+        }
     }
 
     private func tick() {
         let before = store.revision, order = store.order
+        // Stale sessions (docs/product/sessions-and-states.md#staleness) leave like ended ones.
         store.tick(now: Self.now())
         if store.order != order { overlay?.sessionsChanged(store.ordered) }
         if store.revision != before { scheduleRefresh() }
@@ -123,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             })
         statusItem?.onToggleCrew = { [weak self] in self?.toggleCrew() }
         statusItem?.isReleased = { [weak self] in self?.overlay?.sim.released ?? false }
+        statusItem?.onAnnounceChange = { [weak self] rule in self?.store.announceDone = rule }
     }
 
     private func refreshStatusItem() {
@@ -154,6 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return self.home(for: id, overlay: o)
         }
         o.onEvent = { [weak self] e in if e == .gulp { self?.deskPanel?.gulp() } }
+        o.sessionsChanged(store.ordered)
         overlay = o
         return o
     }
