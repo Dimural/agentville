@@ -26,6 +26,7 @@ You are working on **Agentville**, a native macOS menu bar app. It turns every l
 | Quit leaves nothing behind (needs a logged-in Mac; launches the app) | `scripts/check-quit-cleanup.sh` |
 | All checks CI runs | `scripts/ci.sh` |
 | Validate the Claude Code plugin | `claude plugin validate ./Plugin/agentville` and `claude plugin validate .` |
+| Soak the overlay (bug 0001; launches the app, needs Screen Recording) | `scripts/soak-overlay.sh --minutes 30 --copies 2` |
 | Send replay scenarios to a running app | `swift run agentville-replay Tools/scenarios/<name>.jsonl` |
 | Point real Claude Code sessions at a dev hook build | `scripts/dev-link-hook.sh` (undo: `--remove`) |
 
@@ -42,6 +43,7 @@ Sources/AgentvilleCore/      pure, testable app logic (re-exports AgentvilleWire
   Looks/                     deterministic character looks (port of prototype lookFor), sprite + office renderers
   Crew/                      CrewSim: the crew on the desktop (release, recall, roaming, particles), pure and seeded
   Transport/                 SocketListener: the app's receiving end of the hook socket
+  Support/                   Diagnostics: the in-memory diagnostics buffer
 Sources/agentville-hook/     the hook helper Claude Code runs (links only AgentvilleWire)
 Sources/agentville-replay/   dev tool: sends scripted events to the app socket
 Sources/Agentville/          the menu bar app (AppKit + SpriteKit)
@@ -50,6 +52,7 @@ Plugin/agentville/           the Claude Code plugin (manifest + hooks/hooks.json
 .claude-plugin/              marketplace.json so this repo is installable as a marketplace
 Tools/scenarios/             replay scenarios (.jsonl)
 Tools/fixtures/              golden-fixture exporters (run the local prototype in headless Chrome)
+Tools/soak/                  overlay-probe for scripts/soak-overlay.sh (bug 0001)
 scripts/                     build/test/guard scripts (all CI logic lives here)
 docs/                        all specs, decisions, checklists
 .claude/settings.json        project permissions for agents (repo scripts allowed; `git add -f` denied)

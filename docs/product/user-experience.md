@@ -21,6 +21,7 @@ It shows a pixel head, the active session count, and a red dot when any session 
 - **Keep Panel Open** (the panel's pin)
 - **Announce Finished Turns** ▸ Every Turn / Turns of 20 s or More / Never (moves into Settings in M7)
 - **Settings…** (M7)
+- **Copy Diagnostics**: copies a short in-memory record of what the app did (overlay woke, slept, stalled, display changes; never session contents) to the clipboard, for bug reports. Moves into Settings' Diagnostics view in M7
 - **Quit Agentville** (⌘Q)
 
 The menu header shows "N sessions".

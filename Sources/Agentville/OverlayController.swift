@@ -6,6 +6,9 @@
 // doesn't take focus from the user's app.
 // When the crew is home and the particles are gone, the scene pauses and the window leaves the
 // screen (performance rule 1). More displays arrive in M8.
+// Bug 0001 (docs/bugs/0001-grey-screen-overlay.md): the layers are explicitly clear, an
+// `OverlayWatchdog` takes the window off screen if frames stop, the window follows display changes
+// and leaves the screen while the display sleeps, and all of it is logged to `Diagnostics`.
 import AgentvilleCore
 import AppKit
 import SpriteKit
@@ -23,6 +26,14 @@ final class OverlayController {
     var onEvent: ((CrewEvent) -> Void)?
     /// The store's sessions by id, read every frame.
     var sessions: () -> [String: Session] = { [:] }
+    /// Diagnostics (in memory only).
+    var log: (String) -> Void = { _ in }
+    private var watchdog = OverlayWatchdog()
+    private var watchTimer: Timer?
+    /// Uptime of the last wake, until its first frame is logged.
+    private var wokeAt: TimeInterval?
+    private var displayAsleep = false
+    private var observers: [(NotificationCenter, NSObjectProtocol)] = []
 
     init() {
         let screen = NSScreen.screens.first ?? NSScreen.main!
@@ -49,10 +60,34 @@ final class OverlayController {
         view.isPaused = true
         scene = CrewScene(size: screen.frame.size)
         window.contentView = view
+        // Never let a frame show anything but the crew (bug 0001, hypothesis 2).
+        view.wantsLayer = true
+        view.layer?.isOpaque = false
+        view.layer?.backgroundColor = NSColor.clear.cgColor
         scene.controller = self
         view.controller = self
         view.presentScene(scene)
         view.isPaused = true // presentScene un-pauses the view
+        observe()
+    }
+
+    private func observe() {
+        let app = NotificationCenter.default, ws = NSWorkspace.shared.notificationCenter
+        func on(_ c: NotificationCenter, _ name: Notification.Name, _ f: @escaping @MainActor (OverlayController) -> Void) {
+            let token = c.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { if let self { f(self) } }
+            }
+            observers.append((c, token))
+        }
+        on(app, NSApplication.didChangeScreenParametersNotification) { $0.screensChanged() }
+        on(ws, NSWorkspace.screensDidSleepNotification) { $0.displaySleep(true) }
+        on(ws, NSWorkspace.screensDidWakeNotification) { $0.displaySleep(false) }
+    }
+
+    /// For diagnostics.
+    var stateDescription: String {
+        let state = awake ? (displayAsleep ? "awake, display asleep" : watchdog.visible ? "awake" : "awake, hidden by watchdog") : "asleep"
+        return "\(state), on screen: \(window.isVisible), frame \(Int(screenFrame.width))×\(Int(screenFrame.height))"
     }
 
     /// The stage in the sim's top-left coordinates: the menu bar on top, the Dock at the bottom.
@@ -66,41 +101,133 @@ final class OverlayController {
 
     func release(_ sessions: [Session]) -> [CrewEvent] {
         let events = sim.release(sessions)
-        wake()
+        wake("release")
         return events
     }
 
     func recall() {
         sim.recall()
-        wake()
+        wake("recall")
     }
 
     /// Always passed on: the sim needs the order for the crowd and the names for walk-ons. It only
     /// wakes the overlay when someone is out (or about to be).
     func sessionsChanged(_ sessions: [Session]) {
         sim.sessionsChanged(sessions)
-        if !sim.isIdle { wake() }
+        if !sim.isIdle { wake("sessions changed") }
     }
 
     /// Store effects: finished turns and sessions that need you may walk on (crew inside).
     func notify(_ effects: [StoreEffect]) {
         sim.notify(effects)
-        if !sim.isIdle { wake() }
+        if !sim.isIdle { wake("walk-on") }
     }
 
     func close() {
         awake = false
+        stopWatching()
+        for (c, t) in observers { c.removeObserver(t) }
+        observers.removeAll()
         view.isPaused = true
         window.orderOut(nil)
         window.close()
     }
 
-    private func wake() {
+    private func wake(_ reason: String) {
         guard !awake else { return }
         awake = true
+        log("overlay wake (\(reason))")
+        guard !displayAsleep else { return } // shown when the display wakes
+        present()
+    }
+
+    /// On screen and running, watched.
+    private func present() {
         scene.resetClock()
         window.orderFrontRegardless()
         view.isPaused = false
+        wokeAt = AppDelegate.now()
+        watchdog.awake(at: AppDelegate.now())
+        startWatching()
+    }
+
+    // MARK: - Watchdog, displays (bug 0001)
+
+    private func startWatching() {
+        guard watchTimer == nil else { return }
+        let t = Timer(timeInterval: Timing.overlayCheck, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkFrames() }
+        }
+        t.tolerance = Timing.overlayCheck / 4
+        RunLoop.main.add(t, forMode: .common)
+        watchTimer = t
+    }
+
+    private func stopWatching() {
+        watchTimer?.invalidate()
+        watchTimer = nil
+        watchdog.asleep()
+    }
+
+    /// Each frame, from the scene.
+    fileprivate func frameDrawn() {
+        let now = AppDelegate.now()
+        if let w = wokeAt {
+            wokeAt = nil
+            log(String(format: "overlay first frame after %.0f ms", (now - w) * 1000))
+        }
+        if let a = watchdog.frame(at: now) { apply(a, because: "frames resumed") }
+    }
+
+    private func checkFrames() {
+        let now = AppDelegate.now()
+        // Hidden behind a full-screen app's Space, frames may stop on purpose: not a stall.
+        if watchdog.visible, !window.occlusionState.contains(.visible) {
+            _ = watchdog.frame(at: now)
+            return
+        }
+        guard let a = watchdog.check(at: now) else { return }
+        apply(a, because: a == .hide ? "no frame for \(Int(Timing.overlayStall)) s (stall \(watchdog.stalls))" : "retrying")
+    }
+
+    private func apply(_ action: OverlayWatchdog.Action, because why: String) {
+        switch action {
+        case .hide:
+            log("overlay off screen: \(why)")
+            window.orderOut(nil)
+        case .show:
+            log("overlay back on screen: \(why)")
+            window.orderFrontRegardless()
+            view.isPaused = false
+        }
+    }
+
+    /// The display's size, the menu bar or the Dock changed: follow it.
+    private func screensChanged() {
+        guard let screen = NSScreen.screens.first else { return }
+        let stage = Self.stage(for: screen)
+        guard screen.frame != screenFrame || stage != sim.stage else { return }
+        log("display changed to \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+        screenFrame = screen.frame
+        sim.stage = stage
+        window.setFrame(screen.frame, display: false)
+        view.frame = CGRect(origin: .zero, size: screen.frame.size)
+        scene.size = screen.frame.size
+    }
+
+    /// Off screen while the display sleeps; back, with a fresh clock, when it wakes.
+    private func displaySleep(_ asleep: Bool) {
+        guard asleep != displayAsleep else { return }
+        displayAsleep = asleep
+        log(asleep ? "display asleep" : "display awake")
+        guard awake else { return }
+        if asleep {
+            stopWatching()
+            view.isPaused = true
+            window.orderOut(nil)
+        } else {
+            present()
+        }
     }
 
     // MARK: - Input (docs/architecture/input-and-safety.md)
@@ -138,6 +265,8 @@ final class OverlayController {
     /// Called by the scene once the crew is home and the particles are gone.
     fileprivate func sleep() {
         awake = false
+        log("overlay sleep")
+        stopWatching()
         window.ignoresMouseEvents = true
         view.isPaused = true
         window.orderOut(nil)
@@ -201,6 +330,7 @@ final class CrewScene: SKScene {
         c.pollInput()
         for e in c.sim.update(dt: dt, sessions: c.sessions()) { c.onEvent?(e) }
         draw(c.sim)
+        c.frameDrawn()
         if c.sim.isIdle { c.sleep() }
     }
 

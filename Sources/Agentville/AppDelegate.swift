@@ -16,16 +16,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tickTimer: Timer?
     /// SIGTERM/SIGINT (`kill`, Ctrl-C) become a normal quit, so the socket file is removed then too.
     private var signalSources: [DispatchSourceSignal] = []
+    /// In memory only (non-negotiable #8); copied from the status menu.
+    private(set) var diagnostics = Diagnostics()
     /// Coalesces status item updates so a storm of batches redraws at most at 4 Hz.
     private var refreshPending = false
 
     /// Monotonic seconds; the store only ever compares times, so uptime is enough and immune to clock changes.
     static func now() -> TimeInterval { ProcessInfo.processInfo.systemUptime }
 
+    /// Dev and the soak harness (`scripts/soak-overlay.sh`): `--diagnostics-stderr` also prints each
+    /// line to stderr. Never a file (non-negotiable #8).
+    private let echoDiagnostics = CommandLine.arguments.contains("--diagnostics-stderr")
+
+    func log(_ message: String) {
+        diagnostics.log(message)
+        if echoDiagnostics, let line = diagnostics.lines.last { FileHandle.standardError.write(Data((line + "\n").utf8)) }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         store.announceDone = Preferences.announceDone
         buildStatusItem()
         startListening()
+        log("launched; \(listener == nil ? "not listening (socket unavailable)" : "listening")")
         hotKey = HotKey { [weak self] in self?.toggleCrew() }
         quitOnSignals()
         // Finished → idle and staleness need a clock. Cheap, coarse and tolerant, so idle stays idle.
@@ -140,6 +152,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem?.onToggleCrew = { [weak self] in self?.toggleCrew() }
         statusItem?.isReleased = { [weak self] in self?.overlay?.sim.released ?? false }
         statusItem?.onAnnounceChange = { [weak self] rule in self?.store.announceDone = rule }
+        statusItem?.diagnostics = { [weak self] in self?.diagnosticsText() ?? "" }
+    }
+
+    private func diagnosticsText() -> String {
+        let stats = listener?.stats
+        let o = overlay
+        var head = "Agentville diagnostics\n"
+        head += "sessions: \(store.order.count), events received: \(stats?.received ?? 0), dropped: \(stats?.dropped ?? 0)\n"
+        head += "crew: \(o?.sim.released == true ? "out" : "inside"), overlay: \(o?.stateDescription ?? "not created")\n\n"
+        return head + diagnostics.text
     }
 
     private func refreshStatusItem() {
@@ -165,6 +187,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func crew() -> OverlayController {
         if let o = overlay { return o }
         let o = OverlayController()
+        o.log = { [weak self] in self?.log($0) }
         o.sessions = { [weak self] in self?.store.sessions ?? [:] }
         o.sim.home = { [weak self, weak o] id in
             guard let self, let o else { return Home(x: 0, y: 0, scale: 1) }

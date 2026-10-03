@@ -23,6 +23,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     /// Release / call back, and whether the crew is out (for the item's title).
     var onToggleCrew: (() -> Void)?
     var isReleased: () -> Bool = { false }
+    /// The in-memory diagnostics, for "Copy Diagnostics" (bug 0001; the full Diagnostics view is M7).
+    var diagnostics: () -> String = { "" }
     private let dot = CALayer()
     private var needsYou = false
     private let onTogglePanel: () -> Void
@@ -72,6 +74,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
         menu.addItem(announce)
         menu.addItem(.separator())
+        let copy = NSMenuItem(title: "Copy Diagnostics", action: #selector(copyDiagnostics), keyEquivalent: "")
+        copy.target = self
+        copy.toolTip = "Copies what the app has been doing (kept in memory only) to the clipboard"
+        menu.addItem(copy)
         menu.addItem(NSMenuItem(title: "Quit Agentville", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
@@ -161,6 +167,12 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func toggleCrew() { onToggleCrew?() }
+
+    /// Only when the user asks: to the clipboard, never to a file (non-negotiable #8).
+    @objc private func copyDiagnostics() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(diagnostics(), forType: .string)
+    }
 
     /// Where the crew flies when the desk panel is closed: just under the icon (prototype `menuIconPos`).
     var iconHome: CGPoint? {
