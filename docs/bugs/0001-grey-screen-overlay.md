@@ -44,9 +44,9 @@ Each attempt ran a private copy of the app and captured only its overlay window 
 | 3 | 3 launches of a freshly copied release binary (cold shader cache), `--release-crew`, 100 sessions; a capture every ~0.1 s from launch | 110 | 5.0% |
 
 Not yet tried:
-- running two copies at once, as happened when it occurred;
-- heavy memory pressure (a release build was compiling just before);
-- a long soak of tens of minutes;
+- ~~running two copies at once~~ (soak runs below);
+- heavy memory pressure (a release build was compiling just before; builds ran alongside soak 2, mild at most);
+- a long soak of tens of minutes on an unlocked screen (soak 2 was mostly behind the lock screen);
 - Safari frontmost;
 - sleep/wake or a display change while the crew is out.
 
@@ -71,6 +71,22 @@ Hardening, whatever the cause (next step 3), and a trace for next time (step 2):
 - **Soak harness.** `scripts/soak-overlay.sh [--minutes M] [--copies N] [--rate R]` runs private release copies with the crew out under load, captures each overlay window every second (`Tools/soak/overlay-probe.swift`), keeps any mostly opaque frame, and counts watchdog trips in the copies' diagnostics.
 
 What the watchdog can't catch: a surface that goes grey while frames keep coming. The soak harness is the check for that.
+
+Later the same day: every gap of more than 250 ms between overlay frames is logged too ("overlay frame gap N ms"), the overlay is never animated in or out (`animationBehavior = .none`), and a window frame that differs from the display's is logged and corrected when the overlay wakes.
+
+## Soak runs (2026-10-03)
+
+| Run | Setup | Result |
+|---|---|---|
+| 1 | 1 min, 2 copies, 200 events/s each | 86 captures, most opaque 5.2%, no watchdog trip |
+| 2 | 30 min, 2 copies, 200 events/s each, builds running alongside | 2,510 captures, none mostly opaque (most 5.7%), no watchdog trip. **Caveat:** the owner's Mac locked partway through (the copies logged a display change at 17:44:50; the display turned off at 18:14), so most of this ran behind the lock screen and doesn't count towards the hour in "Done when" |
+| 3 | 2 min, 2 copies, Mac locked, display off | Overlays never drew a frame; the watchdog took them off screen twice per copy, as designed. The harness flagged this, correctly |
+
+Learned on the way, all from the lock screen, not Agentville:
+- **Behind the lock screen, WindowServer shows every app window at 90% around the screen's centre** (the window list reports the overlay at 1324×862 on a 1470×956 display while AppKit's frame is unchanged), the overlay is occluded, and SpriteKit stops drawing. While the copies were behind it, SpriteKit logged "SKView: no drawables available for rendering. Skipping this frame." every 5–6 s; single copies on an unlocked screen don't (3 runs of 60 s: idle, under load, under load with the probe).
+- The probe now finds the overlay by owner and level rather than exact size, and reports a window shown at a size other than the display's.
+
+Still worth trying, with someone at the Mac: lock and unlock, display sleep and wake, and plugging in or removing an external display, all with the crew out (`scripts/soak-overlay.sh` running alongside).
 
 ## Next steps
 

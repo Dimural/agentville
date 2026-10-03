@@ -32,6 +32,7 @@ final class OverlayController {
     private var watchTimer: Timer?
     /// Uptime of the last wake, until its first frame is logged.
     private var wokeAt: TimeInterval?
+    private var lastFrameAt: TimeInterval?
     private var displayAsleep = false
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
 
@@ -47,6 +48,8 @@ final class OverlayController {
         window.isOpaque = false
         window.backgroundColor = .clear
         window.hasShadow = false
+        // Never animated in or out: it's glass, not a window the user opened.
+        window.animationBehavior = .none
         window.ignoresMouseEvents = true // non-negotiable #1: the crew is glass
         // Below the menu bar, so the status item (the escape hatch) is always above the crew.
         window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.mainMenuWindow)) - 1)
@@ -83,6 +86,8 @@ final class OverlayController {
         on(ws, NSWorkspace.screensDidSleepNotification) { $0.displaySleep(true) }
         on(ws, NSWorkspace.screensDidWakeNotification) { $0.displaySleep(false) }
     }
+
+    private static func size(_ r: CGRect) -> String { "\(Int(r.width))×\(Int(r.height)) at \(Int(r.minX)),\(Int(r.minY))" }
 
     /// For diagnostics.
     var stateDescription: String {
@@ -146,7 +151,12 @@ final class OverlayController {
         scene.resetClock()
         window.orderFrontRegardless()
         view.isPaused = false
+        if window.frame != screenFrame {
+            log("overlay frame \(Self.size(window.frame)) differs from the display's \(Self.size(screenFrame)); fixing")
+            window.setFrame(screenFrame, display: false)
+        }
         wokeAt = AppDelegate.now()
+        lastFrameAt = nil
         watchdog.awake(at: AppDelegate.now())
         startWatching()
     }
@@ -175,7 +185,11 @@ final class OverlayController {
         if let w = wokeAt {
             wokeAt = nil
             log(String(format: "overlay first frame after %.0f ms", (now - w) * 1000))
+        } else if let last = lastFrameAt, now - last > Timing.overlayFrameGap {
+            // A hitch: the main thread was busy, or SpriteKit waited for a drawable (bug 0001).
+            log(String(format: "overlay frame gap %.0f ms", (now - last) * 1000))
         }
+        lastFrameAt = now
         if let a = watchdog.frame(at: now) { apply(a, because: "frames resumed") }
     }
 
@@ -207,7 +221,7 @@ final class OverlayController {
         guard let screen = NSScreen.screens.first else { return }
         let stage = Self.stage(for: screen)
         guard screen.frame != screenFrame || stage != sim.stage else { return }
-        log("display changed to \(Int(screen.frame.width))×\(Int(screen.frame.height))")
+        log("display changed: \(Int(screen.frame.width))×\(Int(screen.frame.height)), menu bar \(Int(stage.top)) pt, usable to \(Int(stage.bottom)) pt")
         screenFrame = screen.frame
         sim.stage = stage
         window.setFrame(screen.frame, display: false)

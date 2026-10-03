@@ -32,15 +32,19 @@ guard !pids.isEmpty else { print("usage: overlay-probe --pids P1,P2 [--seconds S
 let overlayLevel = Int(CGWindowLevelForKey(.mainMenuWindow)) - 1
 let screen = NSScreen.screens.first?.frame.size ?? .zero
 
-/// The pid's overlay window, if it's on screen.
+/// The pid's overlay window (its only window at the overlay's level), if it's on screen, and
+/// whether WindowServer shows it at a size other than the display's.
+var reportedScale = Set<Int32>()
 func overlayWindow(_ pid: Int32) -> CGWindowID? {
     guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else { return nil }
     for w in list {
         guard (w[kCGWindowOwnerPID as String] as? Int32) == pid,
               (w[kCGWindowLayer as String] as? Int) == overlayLevel,
               let b = w[kCGWindowBounds as String] as? [String: Double],
-              b["Width"] == Double(screen.width), b["Height"] == Double(screen.height),
               let id = w[kCGWindowNumber as String] as? UInt32 else { continue }
+        if (b["Width"] != Double(screen.width) || b["Height"] != Double(screen.height)), reportedScale.insert(pid).inserted {
+            print("pid \(pid) overlay shown at \(Int(b["Width"] ?? 0))×\(Int(b["Height"] ?? 0)), display is \(Int(screen.width))×\(Int(screen.height))")
+        }
         return id
     }
     return nil
