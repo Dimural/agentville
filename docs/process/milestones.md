@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M5** (⌥ grab, drag, throw; hover fade; global shortcut). M4 is done apart from the owner's look at the three new poses. M3 is done: the owner checked click-through and approved release and recall on 2026-10-02. M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M6** (walk-on notices, crowd and caps, staleness). M5 is done: the owner checked grabbing, ⌃⌥C and click-through and approved it on 2026-10-03. M4 is done apart from the owner's look at the three new poses. M3 is done: approved 2026-10-02. M2 is done: approved 2026-10-02. M1 is done: verified 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -91,8 +91,8 @@ Scope: the crew stays glass unless ⌥ is held over a character ([input-and-safe
 - [x] App: `InputPoller` (30–60 Hz, only while the crew is out) polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation`, flips `ignoresMouseEvents`; the overlay turns mouse down/drag/up into grabs; releasing ⌥ ends a drag; grab mode outlines everyone (highlight sprites). Done as `OverlayController.pollInput()`, run each frame by the scene (so only while the crew is out); the overlay is a non-activating panel that never becomes key, so grabbing doesn't take focus from the user's app; hover fade and dizzy stars drawn
 - [x] HUD pill while the crew is out: "Clicks pass through · hold ⌥ to grab · ⌃⌥C calls them back"; in grab mode: "Grab mode · drag anyone, let go to throw"
 - [x] ⌃⌥C toggles the crew from any app (Carbon hot key, `HotKey`); the footer shows the "⌃⌥C toggles" hint, and the menu item shows the shortcut. 2026-10-03: HUD and footer hint checked in in-app snapshots; the hot key itself is part of the manual check
-- [ ] Manual: no permission prompt; grab, throw and tap over real apps; releasing ⌥ is click-through again at once
-- [ ] Owner's review of grabbing against the prototype
+- [x] Manual: no permission prompt; grab, throw and tap over real apps; releasing ⌥ is click-through again at once: owner checked 2026-10-03
+- [x] Owner's review of grabbing against the prototype: approved 2026-10-03
 
 ## Later milestones
 
