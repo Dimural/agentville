@@ -94,6 +94,23 @@ Scope: the crew stays glass unless ⌥ is held over a character ([input-and-safe
 - [x] Manual: no permission prompt; grab, throw and tap over real apps; releasing ⌥ is click-through again at once: owner checked 2026-10-03
 - [x] Owner's review of grabbing against the prototype: approved 2026-10-03
 
+## M6: walk-on notices, crowd and caps, staleness
+
+Scope: what happens when the crew is inside and a session finishes or needs you (walk-ons), and what happens when there are more sessions than the desktop holds (the crowd). Ports of the prototype's `queueNotice`, `processNotices`, `slotsMax`, the `notify-in`/`notify-hold`/`notify-out` modes, `spawnCrowd`, `roamCrowd`, `syncRoamers` and the crowd parts of `drawEnt`, `hitBox` and `endDrag`. Staleness itself was built in M1; M6 checks its effect on the desktop. The Settings window is M7, so the done-announcement setting lives in the status menu until then.
+
+- [ ] Walk-ons while the crew is inside: from the right edge at 95 pt/s to slot k at x = `W − 80 − k·130`; 3 slots (W ≥ 900), 2 (W ≥ 560), 1 otherwise; **Done!** holds 6.5 s (cheer 2.4 s, 30 confetti, "name · turn time"); **Needs you** waves under `!` until answered, at most 16 s; out at 110 pt/s; queue ≤ 24; "+N more" folding. `CrewNoticeTests`
+- [ ] The done-announcement rule (open question 1's default): `DoneAnnouncement` = every turn / long turns (≥ 20 s, the default) / never decides the Done walk-on only; roamers and the office cheer every turn. `SessionStoreTests`, `CrewNoticeTests`
+- [ ] The setting: status menu → **Announce Finished Turns** ▸ Every Turn / Turns of 20 s or More / Never, kept in `UserDefaults` (preferences only, non-negotiable #8)
+- [ ] Walk-ons and grabbing: a tap sends a walk-on home; a thrown one lands and walks off; releasing the crew turns walk-ons into roamers; a walk-on whose session ends waves "Bye!"
+- [ ] The crowd: more than 12 sessions → one crowd leaps out 60 ms after the last roamer; three half-size members, an orange "+N" bubble ("N need you"), `!` while any waits; wanders at 22 pt/s; a member's finished turn: "name finished" and 12 confetti; when a roamer's session ends the next one steps out ("My turn!", 0.7 s); empty → sparkle poof; grab: a tap resumes wandering, a throw is never dizzy. `CrewCrowdTests`
+- [ ] Recall with the crowd and walk-ons out completes within 2.6 s (non-negotiable #2)
+- [ ] Caps under 100 sessions and an event burst: ≤ 12 roamers + 1 crowd + 3 walk-ons, ≤ 520 particles, ≤ 24 queued notices; a sim step with 100 sessions costs a small fraction of a frame
+- [ ] Overlay: the crowd and its count bubble drawn; walk-ons wake the overlay while the crew is inside, and it sleeps again (paused, ordered out) once they've gone
+- [ ] Staleness on the desktop: a pruned session's character waves "Bye!" like an ended one; docs say what the app actually does (`tick` every 5 s)
+- [ ] Scenarios: `walk-ons.jsonl`, `crowd.jsonl`
+- [ ] Measured: `--generate hundred` and `--generate burst` replays with the crew out stay smooth (CPU and frame time recorded here)
+- [ ] Owner's review of walk-ons and the crowd against the prototype; owner answers open questions 1 and 9
+
 ## Later milestones
 
 Detailed checklists are written at the start of each milestone, using the per-area lists in [success-checklists.md](../quality/success-checklists.md).
