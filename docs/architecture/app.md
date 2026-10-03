@@ -21,7 +21,7 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 
 - Sprites are generated procedurally (a port of `drawChar` + `outline`) into a small RGBA buffer, **once per (look, pose, frame, highlight)**, and cached as `SKTexture`/`CGImage` with **nearest-neighbour** filtering.
 - Integer scales only: 3 points per pixel on the desktop (2 on small screens), 2 in the office.
-- `PixelImage.cgImage(canvas, scale:)` (Core) turns a `PixelCanvas` into a `CGImage`, pre-scaled by an integer factor with interpolation off (`PixelImageTests`). Views that show it set their layer's `magnificationFilter` to `.nearest`, so an integer upscale to the backing scale stays crisp without a per-frame copy.
+- `PixelImage.cgImage(canvas, scale:)` (Core) turns a `PixelCanvas` into a `CGImage`, pre-scaled by an integer factor with interpolation off (`PixelImageTests`). Images replaced every frame (the office) go through `PixelColorMatcher` instead: the same, but with each palette colour converted once into the screen's colour space, so Core Animation doesn't colour-match every frame (`PixelColorMatcherTests`). Views that show it set their layer's `magnificationFilter` to `.nearest`, so an integer upscale to the backing scale stays crisp without a per-frame copy.
 - Positions are snapped to whole points when drawn; motion runs at display rate, while sprite frames advance at pixel-art rates ([motion-and-behaviour.md](../design/motion-and-behaviour.md)).
 - Draw order: shadows → particles → sprites (sorted by y) → emotes; speech bubbles are their own layer, clamped inside the screen.
 

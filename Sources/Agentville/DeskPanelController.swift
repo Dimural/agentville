@@ -256,9 +256,20 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
         let clock = Calendar.current.dateComponents([.hour, .minute], from: Date())
         let scene = OfficeScene(sessions: sessions, awayIDs: away(), night: Theme.isDark(office),
                                 clock: (clock.hour ?? 0, clock.minute ?? 0))
-        office.pixels.image = PixelImage.cgImage(OfficeRenderer.render(scene, t: AppDelegate.now(), cache: sprites))
+        office.pixels.image = matcher().cgImage(OfficeRenderer.render(scene, t: AppDelegate.now(), cache: sprites))
         office.update(moreBelow: scene.moreBelow,
                       twins: sessions.prefix(Limits.desks).map { $0.twinIndex > 1 ? $0.twinIndex : nil })
+    }
+
+    /// Office frames are made in the panel's screen's colour space, so Core Animation doesn't
+    /// colour-match every frame (half the open panel's CPU; docs/quality/performance-budget.md).
+    private var colorMatcher: PixelColorMatcher?
+    private func matcher() -> PixelColorMatcher {
+        let space = panel.screen?.colorSpace?.cgColorSpace ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        if let m = colorMatcher, m.space == space { return m }
+        let m = PixelColorMatcher(space: space)
+        colorMatcher = m
+        return m
     }
 
     // MARK: - List and summary (≤ 4 Hz)
