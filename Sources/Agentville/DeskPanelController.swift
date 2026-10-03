@@ -289,10 +289,13 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
         shownBlink = blink
 
         rows = store.ordered.map { DeskList.Row($0, now: now) }
-        if structural {
+        // Rebuild rows only when their number changes. Otherwise every cell just shows rows[r], so
+        // updating the visible ones in place is enough, and much cheaper in an event storm than
+        // `reloadData`, which makes every visible row view again (docs/quality/performance-budget.md).
+        if structural, force || rows.count != table.numberOfRows {
             table.reloadData()
         } else {
-            // Only times and blink changed: update the visible cells in place.
+            // Update the visible cells in place.
             let visible = table.rows(in: table.visibleRect)
             for r in visible.location..<(visible.location + visible.length) where r < rows.count {
                 (table.view(atColumn: 0, row: r, makeIfNecessary: false) as? SessionRowView)?

@@ -254,8 +254,16 @@ final class CrewScene: SKScene {
             }
 
             if let b = m.bubble {
-                let art = textures.bubble(b)
-                if n.bubble.texture !== art.texture {
+                // Look the art up only when the bubble changes, not every frame.
+                var key = b
+                key.until = 0
+                let art: BubbleArt.Art
+                if let shown = n.bubbleArt, n.bubbleKey == key {
+                    art = shown
+                } else {
+                    art = textures.bubble(key)
+                    n.bubbleKey = key
+                    n.bubbleArt = art
                     n.bubble.texture = art.texture
                     n.bubble.size = art.texture.size()
                     n.bubble.anchorPoint = art.anchor
@@ -307,9 +315,8 @@ final class CrewScene: SKScene {
             let sc = m.scale, s = max(1, sc - 1), lift = m.z + m.hop
             let ang = m.t * 6 + Double(i) * .pi
             let x = (m.x + cos(ang) * 6 * sc - sc).rounded(), y = (m.y - lift - 25 * sc + sin(ang) * 1.5 * sc).rounded()
-            star.texture = textures.plus
-            star.color = Self.color(RGB(0xFFEC27))
-            star.colorBlendFactor = 1
+            let tex = textures.tinted(.plus, RGB(0xFFEC27))
+            if star.texture !== tex { star.texture = tex }
             star.size = CGSize(width: 3 * s, height: 3 * s)
             star.position = CGPoint(x: x, y: H - y)
             star.alpha = CGFloat(m.alpha)
@@ -374,10 +381,13 @@ final class CrewScene: SKScene {
         node.position = CGPoint(x: x, y: H - y)
     }
 
+    /// Particles use textures tinted ahead of time (`TextureCache.tinted`), never `color`: setting a
+    /// node's colour makes AppKit colour-match it, and doing that for every particle each frame was
+    /// the app's biggest cost in an event storm (docs/quality/performance-budget.md).
     @MainActor
     private func drawParticles(_ ps: [Particle], scale S: Double, H: CGFloat) {
         while particleNodes.count < ps.count {
-            let p = SKSpriteNode(color: .white, size: CGSize(width: 1, height: 1))
+            let p = SKSpriteNode(texture: nil, size: CGSize(width: 1, height: 1))
             p.anchorPoint = CGPoint(x: 0, y: 1)
             p.zPosition = 1
             addChild(p)
@@ -388,54 +398,43 @@ final class CrewScene: SKScene {
             let p = ps[i], t = p.life / p.max
             let x = p.x.rounded(), y = (p.y - p.z).rounded()
             node.isHidden = false
+            let shape: TextureCache.Shape
             switch p.kind {
             case .spark:
                 // A plus: three cells of s×s, drawn as one 3×3 texture scaled by s.
                 let s = max(1, (S * (1 - t * 0.5)).rounded())
-                node.texture = textures.plus
-                node.color = Self.color(p.color)
-                node.colorBlendFactor = 1
+                shape = .plus
                 node.alpha = CGFloat(1 - t)
                 node.size = CGSize(width: s * 3, height: s * 3)
                 node.position = CGPoint(x: x - s, y: H - (y - s))
             case .dust:
                 let s = (S * (1 + t * 2)).rounded()
-                node.texture = nil
-                node.color = Self.color(p.color)
-                node.colorBlendFactor = 1
+                shape = .solid
                 node.alpha = CGFloat((1 - t) * 0.7)
                 node.size = CGSize(width: s, height: s)
                 node.position = CGPoint(x: (x - s / 2).rounded(.down), y: H - (y - s).rounded(.down))
             case .confetti:
                 // A flake that flips between 1 and 2 cells wide as it flutters; fades in its last quarter.
                 let w = abs(sin(p.life * 10 + p.phase)) > 0.5 ? 2.0 : 1.0
-                node.texture = nil
-                node.color = Self.color(p.color)
-                node.colorBlendFactor = 1
+                shape = .solid
                 node.alpha = CGFloat(t > 0.75 ? (1 - t) * 4 : 1)
                 node.size = CGSize(width: max(1, (w * S * 0.67).rounded(.down)), height: S)
                 node.position = CGPoint(x: x, y: H - y)
             case .zzz:
                 let s = max(1, S - 1)
-                node.texture = textures.zee
-                node.color = Self.color(p.color)
-                node.colorBlendFactor = 1
+                shape = .zee
                 node.alpha = CGFloat(1 - t)
                 node.size = CGSize(width: s * 3, height: s * 3)
                 node.position = CGPoint(x: x, y: H - y)
             case .bit:
-                node.texture = nil
-                node.color = Self.color(p.color)
-                node.colorBlendFactor = 1
+                shape = .solid
                 node.alpha = CGFloat(1 - t)
                 node.size = CGSize(width: S * 2, height: S)
                 node.position = CGPoint(x: x, y: H - y)
             }
+            let tex = textures.tinted(shape, p.color)
+            if node.texture !== tex { node.texture = tex }
         }
-    }
-
-    static func color(_ c: RGB) -> NSColor {
-        NSColor(srgbRed: CGFloat(c.r) / 255, green: CGFloat(c.g) / 255, blue: CGFloat(c.b) / 255, alpha: 1)
     }
 
     /// Shadows, the sprite, its sidekick, its emote and its speech bubble.
@@ -449,6 +448,9 @@ final class CrewScene: SKScene {
         let stars = [SKSpriteNode(), SKSpriteNode()]
         let emote = SKSpriteNode()
         let bubble = SKSpriteNode()
+        /// What `bubble` shows (its `until` zeroed), so unchanged bubbles skip the texture cache.
+        var bubbleKey: Bubble?
+        var bubbleArt: BubbleArt.Art?
         /// The crowd's three members (hidden for everyone else).
         let crowd = (0..<Crowd.offsets.count).map { _ in MemberNodes.spriteNode() }
         private var all: [SKSpriteNode] { [shadow1, shadow2, sideShadow1, sideShadow2, side, sprite, badge, emote, bubble] + stars + crowd }
@@ -497,18 +499,32 @@ final class TextureCache {
     private var bubbleTextures: [Bubble: BubbleArt.Art] = [:]
     private var badgeTextures: [Int: SKTexture] = [:]
 
-    let plus: SKTexture = {
-        var c = PixelCanvas(width: 3, height: 3)
-        c.fill(0, 1, 3, 1, RGB(0xFFFFFF)); c.fill(1, 0, 1, 3, RGB(0xFFFFFF))
-        return TextureCache.texture(c)
-    }()
+    /// Particle shapes: a filled cell, a plus (sparks, dizzy stars) and a z
+    /// (prototype `drawPattern(['##.', '.#.', '.##'])` for sleepers).
+    enum Shape: Hashable { case solid, plus, zee }
+    private struct TintKey: Hashable { let shape: Shape; let color: RGB }
+    private var tintedTextures: [TintKey: SKTexture] = [:]
 
-    /// Prototype `drawPattern(['##.', '.#.', '.##'])` for sleepers' z's.
-    let zee: SKTexture = {
-        var c = PixelCanvas(width: 3, height: 3)
-        c.fill(0, 0, 2, 1, RGB(0xFFFFFF)); c.fill(1, 1, 1, 1, RGB(0xFFFFFF)); c.fill(1, 2, 2, 1, RGB(0xFFFFFF))
-        return TextureCache.texture(c)
-    }()
+    /// A shape already in its colour. The particle palette is small and fixed, so this stays tiny;
+    /// the cap is a backstop.
+    func tinted(_ shape: Shape, _ color: RGB) -> SKTexture {
+        let key = TintKey(shape: shape, color: color)
+        if let t = tintedTextures[key] { return t }
+        if tintedTextures.count >= 256 { tintedTextures.removeAll() }
+        var c: PixelCanvas
+        switch shape {
+        case .solid:
+            c = PixelCanvas(width: 1, height: 1); c.fill(0, 0, 1, 1, color)
+        case .plus:
+            c = PixelCanvas(width: 3, height: 3); c.fill(0, 1, 3, 1, color); c.fill(1, 0, 1, 3, color)
+        case .zee:
+            c = PixelCanvas(width: 3, height: 3)
+            c.fill(0, 0, 2, 1, color); c.fill(1, 1, 1, 1, color); c.fill(1, 2, 2, 1, color)
+        }
+        let t = Self.texture(c)
+        tintedTextures[key] = t
+        return t
+    }
 
     static func texture(_ c: PixelCanvas) -> SKTexture {
         let t = SKTexture(cgImage: PixelImage.cgImage(c)!)
