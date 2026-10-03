@@ -1,1 +1,2 @@
 Sources/Agentville/Preferences.swift
+Sources/Agentville/Installer.swift

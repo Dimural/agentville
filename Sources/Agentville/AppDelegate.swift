@@ -38,6 +38,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildStatusItem()
         startListening()
         log("launched; \(listener == nil ? "not listening (socket unavailable)" : "listening")")
+        // A link left dangling by a moved or replaced app is pointed back at this copy (ADR 0007).
+        // Creating a missing one waits for Connect (M7).
+        if let done = Installer.repairLinkAtLaunch(connected: false) { log(done) }
         hotKey = HotKey { [weak self] in self?.toggleCrew() }
         quitOnSignals()
         // Finished → idle and staleness need a clock. Cheap, coarse and tolerant, so idle stays idle.

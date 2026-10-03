@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M6** (walk-on notices, crowd and caps, staleness): built and checked in the app 2026-10-03; blocked by [bug 0001](../bugs/0001-grey-screen-overlay.md) (grey screen); also waiting for the owner's review and one open budget item. M5 is done: the owner checked grabbing, ⌃⌥C and click-through and approved it on 2026-10-03. M4 is done apart from the owner's look at the three new poses. M3 is done: approved 2026-10-02. M2 is done: approved 2026-10-02. M1 is done: verified 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M6** (walk-on notices, crowd and caps, staleness): built and checked in the app 2026-10-03; M7 started alongside it the same day (Path B core). M6 is blocked by [bug 0001](../bugs/0001-grey-screen-overlay.md) (grey screen); also waiting for the owner's review and one open budget item. M5 is done: the owner checked grabbing, ⌃⌥C and click-through and approved it on 2026-10-03. M4 is done apart from the owner's look at the three new poses. M3 is done: approved 2026-10-02. M2 is done: approved 2026-10-02. M1 is done: verified 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -112,6 +112,21 @@ Scope: what happens when the crew is inside and a session finishes or needs you 
 - [ ] Over budget while a storm lasts: 100 sessions released during 200 events/s was 20.6% against < 15%. 2026-10-03: profiled and fixed the app's own costs (particle colours, the desk list's `reloadData`, bubble lookups; see [performance-budget.md](../quality/performance-budget.md#measurements)); a run with the panel closed then read 14.9%. Next step: re-measure on an idle Mac (the owner's Mac in use adds ±3% noise) and tick this if it holds
 - [ ] **Blocker:** [bug 0001](../bugs/0001-grey-screen-overlay.md): the whole screen went flat grey (twice, 2026-10-03) while a test copy had the crew out with 100 sessions; not yet reproduced
 - [ ] Owner's review of walk-ons and the crowd against the prototype; owner answers open questions 1 and 9
+
+## M7: plugin packaging, app bundle, welcome window, Connect/Disconnect, settings
+
+Scope: from "downloaded" to "a real session's character" without the terminal, and a clean way out ([installation.md](../architecture/installation.md)). Started 2026-10-03 while M6 waits for the owner. Signing, the cask and more displays are M8.
+
+- [x] Path B core: `ClaudeSettingsHooks` adds and removes our marked hooks in `~/.claude/settings.json` with the smallest edit; Disconnect restores the file byte for byte; unparseable or odd shapes refused. `ClaudeSettingsHooksTests`
+- [x] `scripts/bundle-app.sh`: `Agentville.app` from the SwiftPM products (`Contents/MacOS/Agentville`, `Contents/Helpers/agentville-hook`, `Info.plist` with `LSUIElement`, minimum macOS 14), hardened runtime, ad-hoc signed until M8; `check-footprint.sh` checks the bundle (< 15 MB, no entitlements). 2026-10-03: 1.6 MB; launched from the bundle, helper delivered an event, clean quit. Bundle id: open question 16
+- [ ] Helper link: `~/Library/Application Support/Agentville/bin/agentville-hook` → the bundle's helper; created on Connect, removed on Disconnect, repaired if the app moves (ADR 0007). Built: `HelperLink` (Core, `HelperLinkTests`: a working link, such as `scripts/dev-link-hook.sh`'s, is never touched at launch; a dangling one is repaired) and `Installer.link`/`unlink`/`repairLinkAtLaunch` (repair runs at launch today); create/remove wait for the Connect UI
+- [ ] Connect, Path A: find `claude`, run `claude plugin marketplace add` and `claude plugin install`, show both commands and their output. Built: `ClaudeCLI` (Core, `ClaudeCLITests`: commands, lookup, "already" counts as success) and `Installer.findClaude`/`run`; waits for the Connect UI
+- [ ] Connect, Path B: preview of what will be added, timestamped backup, write; refuse and explain on `Failure`. Built: `Installer.planConnect`/`apply`/`disconnectSettings` (backup `settings.json.agentville-backup-YYYYMMDD-HHMMSS`, writes through a symlinked file, refuses if the file changed since the preview); waits for the Connect UI
+- [ ] After Connect: "Waiting for the first event…" → "Last event N s ago"; the `disableAllHooks` explanation
+- [ ] Disconnect (both paths) from Settings; Path B diff test leaves `~/.claude` as before
+- [ ] Welcome window on first launch (until connected): what Agentville is, the privacy promise, **Connect to Claude Code**
+- [ ] Settings window (open question 13's scope): launch at login (off), shortcut, done rule (moves from the status menu), hide names (open question 10), Disconnect, Diagnostics
+- [ ] A fresh macOS account goes from install to a real session's character in under a minute (manual)
 
 ## Later milestones
 

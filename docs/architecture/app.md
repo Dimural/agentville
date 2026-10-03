@@ -16,6 +16,7 @@ Purpose: how `Agentville.app` is structured internally, and the performance rule
 | `HotKey` | ⌃⌥C via Carbon `RegisterEventHotKey` (no permission needed); unregistered on quit | Carbon |
 | `Preferences` | The only disk writes: small `UserDefaults` values (today: `announceDone`). The one file allowed `UserDefaults` by `scripts/check-no-disk-writes.sh` | Foundation |
 | `Diagnostics` (Core, `Support/`) | A bounded in-memory list of timestamped lines (`Limits.diagnosticsLines`) about what the app did; never session contents, never written to disk. The status menu's **Copy Diagnostics** puts it, with the listener's counts, on the clipboard. `--diagnostics-stderr` also prints each line to stderr (dev and `scripts/soak-overlay.sh`) | Foundation |
+| `Installer` | Connect and Disconnect's disk and process work, only when the user asks: the helper link (`HelperLink` in Core decides; at launch only a dangling link is repaired), Path B's backup and write of `~/.claude/settings.json` (`ClaudeSettingsHooks` in Core does the text; written through a symlinked file, permissions kept, refused if the file changed since the preview), and running `claude` for Path A (`ClaudeCLI` in Core: where to look, the commands). With `Preferences`, the only file allowed to write | Foundation |
 | `SettingsWindow`, `WelcomeWindow` | Settings, Connect/Disconnect, Diagnostics (in-memory event feed) | SwiftUI |
 
 ## Rendering

@@ -7,7 +7,7 @@ Purpose: how Agentville gets onto a Mac and into Claude Code, and how it leaves 
 - **Primary:** a Homebrew cask in our own tap: `brew install --cask <owner>/tap/agentville` (the tap is a separate repo, `homebrew-tap`).
 - **Secondary:** a `.dmg` on GitHub Releases.
 - **Signing:** a smooth first launch needs a Developer ID–signed, notarized build. Without one, the README explains the System Settings approval. See open question 3.
-- The `.app` is assembled from SwiftPM products by `scripts/bundle-app.sh` (M7). Hardened runtime, **not** sandboxed: running `claude` and writing `~/.claude` are incompatible with the App Sandbox. No entitlements beyond the hardened-runtime defaults.
+- The `.app` is assembled from SwiftPM products by `scripts/bundle-app.sh` → `dist/Agentville.app`: `Contents/MacOS/Agentville`, `Contents/Helpers/agentville-hook`, an `Info.plist` with `LSUIElement` (no Dock icon), `LSMinimumSystemVersion` 14.0, the plugin's version, and the bundle id from open question 16. Hardened runtime, **not** sandboxed: running `claude` and writing `~/.claude` are incompatible with the App Sandbox. No entitlements beyond the hardened-runtime defaults; `scripts/check-footprint.sh` builds the bundle and fails on any entitlement, a missing helper, a missing `LSUIElement` or more than 15 MB. Signed ad hoc until open question 3 is answered (M8). 2026-10-03: 1.6 MB; the bundled app launched, the bundled helper delivered an event, and quitting removed the socket
 
 ## Connect (welcome window → **Connect to Claude Code**)
 
@@ -33,6 +33,7 @@ For people who only use the desktop app or VS Code:
 - **Merge:** preserve every existing key and hook. Never reorder or reformat beyond what's necessary.
 - **Mark:** each added hook command contains the marker comment `# agentville-hook` so Disconnect removes only ours.
 - **Failure:** if the file can't be parsed, stop and explain. **Never overwrite it.**
+- **How (built in M7):** `ClaudeSettingsHooks` (Core, `Install/`) works on the text, never re-serialising it. A strict span parser (`JSONSpans`) finds where things are; Connect appends our entry after the last member or element of the object or list it joins, copying that file's separator, indentation and line endings (one-line files get one-line additions); Disconnect deletes exactly what was appended, and a container that empties (an event list, `hooks`) goes with it, so the file comes back byte for byte. The marker is a shell comment at the end of the command (`…; exit 0 # agentville-hook`). Refused: anything that isn't strict JSON (comments, trailing commas, duplicate keys), a top level that isn't an object, and `hooks` not shaped as Claude Code expects. Known limits: an empty `"hooks": {}` or event list that was there before Connect is dropped by Disconnect (same meaning), and `{\n}` comes back as `{}`. `ClaudeSettingsHooksTests` (empty, missing, existing hooks, tabs, 4 spaces, CRLF, one line, BOM, escapes, partial, mixed groups, refusals); checked against the owner's real 20 KB settings file in memory, 2026-10-03: exact round trip
 
 ### After either path
 

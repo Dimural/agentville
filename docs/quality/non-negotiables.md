@@ -16,7 +16,7 @@ Purpose: the 12 rules no change may break. Each is an acceptance criterion with 
 | 7 | **No networking.** No network code, no network entitlements, no analytics, no crash reporters, no update checks. | `scripts/check-no-network.sh` in CI; `otool -L` check in `check-footprint.sh` |
 | 8 | **Nothing written to disk except preferences** (and the Path B settings backup and helper symlink, both user-initiated). No event logs; diagnostics are in-memory only. | `scripts/check-no-disk-writes.sh` in CI; code review |
 | **Footprint** | | |
-| 9 | **No special permissions.** None of Accessibility, Input Monitoring, Screen Recording, Automation or Full Disk Access. | Manual on a fresh account; entitlement check in `check-footprint.sh` (M8) |
+| 9 | **No special permissions.** None of Accessibility, Input Monitoring, Screen Recording, Automation or Full Disk Access. | Manual on a fresh account; `check-footprint.sh` fails if the app bundle or its helper has any entitlement |
 | 10 | **Bounded footprint.** ≤ 12 roamers, ≤ 3 walk-ons, capped particles, UI at about 4 Hz, near-zero CPU at rest. | Unit tests on caps; [performance budget](performance-budget.md) measurements |
 | 11 | **Survives event storms.** Hundreds of events per second from 100 sessions don't stall the UI, grow memory without bound, or delay recall. | `SessionStoreStressTests`; replay `burst` scenario |
 | **Integrity** | | |

@@ -32,4 +32,20 @@ if otool -L "$bin/agentville-hook" | grep -Ei 'AppKit|SwiftUI|SpriteKit'; then
   echo "  -> agentville-hook links a UI framework" >&2; fail=1
 fi
 
+# The app bundle (scripts/bundle-app.sh): total size, no entitlements (non-negotiable #9), no
+# Dock icon, and the helper where the link expects it (ADR 0007).
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+scripts/bundle-app.sh --out "$tmp" >/dev/null
+app="$tmp/Agentville.app"
+bundle_bytes=$(( $(du -sk "$app" | cut -f1) * 1024 ))
+printf '  %-18s %8d KB  (budget %d KB)\n' Agentville.app $((bundle_bytes / 1024)) $((APP_MAX / 1024))
+if [ "$bundle_bytes" -gt "$APP_MAX" ]; then echo "  -> OVER BUDGET" >&2; fail=1; fi
+[ -x "$app/Contents/Helpers/agentville-hook" ] || { echo "  -> helper missing from Contents/Helpers" >&2; fail=1; }
+[ "$(plutil -extract LSUIElement raw -o - "$app/Contents/Info.plist")" = "true" ] || { echo "  -> LSUIElement not set" >&2; fail=1; }
+for b in "$app" "$app/Contents/Helpers/agentville-hook"; do
+  if [ -n "$(codesign -d --entitlements - "$b" 2>/dev/null | tr -d '[:space:]')" ]; then
+    echo "  -> $(basename "$b") has entitlements" >&2; fail=1
+  fi
+done
+
 [ $fail -eq 0 ] && echo "check-footprint: ok" || { echo "check-footprint: FAILED" >&2; exit 1; }

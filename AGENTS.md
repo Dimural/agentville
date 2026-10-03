@@ -22,7 +22,8 @@ You are working on **Agentville**, a native macOS menu bar app. It turns every l
 | Release build | `scripts/swift.sh build -c release` |
 | Privacy guard: no networking | `scripts/check-no-network.sh` |
 | Privacy guard: no stray disk writes | `scripts/check-no-disk-writes.sh` |
-| Footprint check (binary sizes) | `scripts/check-footprint.sh` |
+| Footprint check (binary and bundle sizes, no entitlements) | `scripts/check-footprint.sh` |
+| Build `dist/Agentville.app` (ad-hoc signed) | `scripts/bundle-app.sh` |
 | Quit leaves nothing behind (needs a logged-in Mac; launches the app) | `scripts/check-quit-cleanup.sh` |
 | All checks CI runs | `scripts/ci.sh` |
 | Validate the Claude Code plugin | `claude plugin validate ./Plugin/agentville` and `claude plugin validate .` |
