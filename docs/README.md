@@ -25,6 +25,7 @@ Everything about what Agentville is, how it works and how we know it's good live
 | Tests | [quality/testing-strategy.md](quality/testing-strategy.md) |
 | Shipping a release | [process/release-checklist.md](process/release-checklist.md) |
 | Anything you're tempted to decide on your own | [decisions/](decisions/) and [decisions/open-questions.md](decisions/open-questions.md) |
+| A known bug, or something that looks like one | [bugs/](bugs/0001-grey-screen-overlay.md) (open: [0001 grey screen](bugs/0001-grey-screen-overlay.md)) |
 
 ## Folder layout
 
@@ -37,6 +38,7 @@ Everything about what Agentville is, how it works and how we know it's good live
 | `quality/` | Non-negotiables, success checklists, test strategy, budgets, privacy | We learn what "good" needs to mean |
 | `process/` | Milestones, workflow, release checklist | Every milestone |
 | `decisions/` | Numbered ADRs plus open questions for the owner | A decision is made or reversed |
+| `bugs/` | Numbered bug reports: what happened, evidence, attempts, next steps | A bug is found, understood or fixed |
 | `reference/` | Pointers to the owner's local ground-truth files and how to use them | Rarely |
 
 ## Conventions

@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M6** (walk-on notices, crowd and caps, staleness): built and checked in the app 2026-10-03; waiting for the owner's review and one open budget item. M5 is done: the owner checked grabbing, ⌃⌥C and click-through and approved it on 2026-10-03. M4 is done apart from the owner's look at the three new poses. M3 is done: approved 2026-10-02. M2 is done: approved 2026-10-02. M1 is done: verified 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M6** (walk-on notices, crowd and caps, staleness): built and checked in the app 2026-10-03; blocked by [bug 0001](../bugs/0001-grey-screen-overlay.md) (grey screen); also waiting for the owner's review and one open budget item. M5 is done: the owner checked grabbing, ⌃⌥C and click-through and approved it on 2026-10-03. M4 is done apart from the owner's look at the three new poses. M3 is done: approved 2026-10-02. M2 is done: approved 2026-10-02. M1 is done: verified 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -110,6 +110,7 @@ Scope: what happens when the crew is inside and a session finishes or needs you 
 - [x] Scenarios: `walk-ons.jsonl`, `crowd.jsonl`: store `expect` lines in `ScenarioTests`, and the crew behaviour their comments promise in `CrewScenarioTests`
 - [x] Measured: `--generate hundred` and `--generate burst` replays with the crew out, release build, 2026-10-03 (table in [performance-budget.md](../quality/performance-budget.md#measurements)): every event accepted (6,200 and 10,080); 100 sessions released 11.9% CPU and 68 MB once events stop; a burst of 2,000 events/s peaks at 27–37% and settles within 5 s. Found on the way and fixed: the open desk panel was over budget (4.3% → 2.2%, `PixelColorMatcher`)
 - [ ] Over budget while a storm lasts: 100 sessions released during 200 events/s is 20.6% against < 15%. App code is a small share of the samples (socket decode ≈ 1%, `CrewSim` less); the rest is SpriteKit/Metal and event handling. Next step: profile the overlay's rendering under a storm in Instruments
+- [ ] **Blocker:** [bug 0001](../bugs/0001-grey-screen-overlay.md): the whole screen went flat grey (twice, 2026-10-03) while a test copy had the crew out with 100 sessions; not yet reproduced
 - [ ] Owner's review of walk-ons and the crowd against the prototype; owner answers open questions 1 and 9
 
 ## Later milestones
