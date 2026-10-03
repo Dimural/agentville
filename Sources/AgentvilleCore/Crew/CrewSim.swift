@@ -505,6 +505,21 @@ public final class CrewSim {
         case .working(.think):
             m.emote = .dots(Int(floor(m.t * 3)) % 4)
             return .think
+        case .working(.plan): return .plan
+        case .working(.tinker):
+            // A small fizz from the gadget each time the wrench turns.
+            let f = Int(floor(m.anim * (Self.fps[.tinker] ?? 4))) % 2
+            if f == 1, m.lastFrame == 0 {
+                for _ in 0..<2 {
+                    add(Particle(kind: .spark, x: m.x + m.face * 8 * S, y: m.y, z: 12 * S, vx: rand(-40...40),
+                                 vy: rand(-10...10), vz: rand(30...90), max: 0.3, color: pick(Self.tinkerColors)))
+                }
+            }
+            m.lastFrame = f
+            return .tinker
+        case .error:
+            m.emote = .icon(.storm)
+            return .error
         default: return .idle
         }
     }
@@ -588,6 +603,8 @@ public final class CrewSim {
     static let fps: [Pose: Double] = [
         .walk: 8, .type: 6, .bash: 3, .read: 1.2, .search: 3, .web: 1.6, .think: 2, .wave: 5, .cheer: 5,
         .coffee: 0.7, .sleep: 1, .dangle: 7, .idle: 1.2, .dizzy: 4, .deskType: 6, .nap: 1,
+        // Agentville's own.
+        .plan: 1.5, .tinker: 4, .error: 2,
     ]
 
     // MARK: - Particles (port of addP, sparkle, dust, stepParts)
@@ -599,6 +616,7 @@ public final class CrewSim {
 
     static let sparkColors = [RGB(0xFFEC27), RGB(0xFFF1E8), RGB(0x29ADFF)]
     static let bashColors = [RGB(0xFFEC27), RGB(0xFFA300), RGB(0xFFF1E8)]
+    static let tinkerColors = [RGB(0x29ADFF), RGB(0xFFF1E8)]
     static let bitColors = [RGB(0xFF77A8), RGB(0x29ADFF), RGB(0xFFEC27), RGB(0x00E436)]
     /// Prototype `CONF`.
     static let confettiColors = [RGB(0xFF004D), RGB(0xFFA300), RGB(0xFFEC27), RGB(0x00E436), RGB(0x29ADFF),

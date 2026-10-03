@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M4** (waiting only on open question 12's poses). M3 is done: the owner checked click-through and approved release and recall on 2026-10-02. M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M4** (waiting only on the owner's look at the three new poses). M3 is done: the owner checked click-through and approved release and recall on 2026-10-02. M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -77,7 +77,8 @@ Scope: everything a released character does on the desktop, driven by real or re
 - [x] Overlay drawing: confetti flakes, z's, bits, sidekicks with shadows and the badge, bubble kinds with a subtitle line. 2026-10-02: in-app snapshots during `desktop-tour` show the Done! bubble with confetti, the "3" badge, and the Needs you bubble
 - [x] `Tools/scenarios/desktop-tour.jsonl`: every activity, a sidekick of 3, a Done!, a Needs you and an idle sleeper
 - [x] Owner's side-by-side review of the desktop tour against the prototype: approved 2026-10-02
-- [ ] Error, planning and MCP poses (open question 12): fallbacks (think, think, idle) until the owner decides
+- [x] Error, planning and MCP poses (open question 12, answered 2026-10-03): original `plan`, `tinker` and `error` poses plus a `storm` emote, at the desk (own monitor screens) and on the desktop (tinkering fizzes). `AgentvillePosesTests`; preview sheet and office render checked 2026-10-03
+- [ ] Owner's look at the three new poses (`--release-crew` with a planning, an MCP and a failed session)
 
 ## Later milestones
 

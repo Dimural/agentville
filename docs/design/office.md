@@ -43,6 +43,9 @@ Subagent: a mini-me (desktop `type` pose at 1× scale) sits on the monitor.
 | thinking | `think` | n/a | 2 | `dots` |
 | running | `deskType` | n/a | 11 | |
 | editing / other | `deskType` | n/a | 6 | |
+| planning *(Agentville's own)* | `plan` | n/a | 1.5 | |
+| MCP tools *(Agentville's own)* | `tinker` | n/a | 4 | |
+| error *(Agentville's own)* | `error` | n/a | 2 | `storm` |
 
 The frame phase is offset per desk by `i·0.3 s` so the room doesn't animate in lockstep.
 
@@ -58,6 +61,9 @@ The frame phase is offset per desk by `i·0.3 s` so the room doesn't animate in 
 | Thinking | dark; 0–3 dots |
 | Needs you | flashing `#FF004D` / `#7E2553` with a white `!` |
 | Finished | `#0F7A43` with a white check |
+| Planning *(Agentville's own)* | light `#ECEAF4`; 4 checklist rows whose boxes turn green `#0B9A4B` one by one (`tick % 5`) |
+| MCP tools *(Agentville's own)* | dark; a grey plug and a blue `#29ADFF` progress bar filling (`tick % 13`) |
+| Error *(Agentville's own)* | `#2A1520` with a steady red `#FF004D` cross (no blinking, unlike Needs you) |
 | Idle / away | `#15172C` with one bouncing coloured pixel (screensaver) |
 
 ## Code

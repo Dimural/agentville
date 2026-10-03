@@ -44,12 +44,12 @@ struct SpriteRendererTests {
     @Test("Fixture covers every pose, style, accessory and pattern")
     func coverage() {
         let f = Self.fixture
-        #expect(Set(f.poses) == Set(Pose.allCases.map(\.rawValue)))
+        #expect(Set(f.poses) == Set(Pose.prototypePoses.map(\.rawValue)))
         #expect(Set(f.looks.map(\.style)) == Set(Look.HairStyle.allCases.map(\.rawValue)))
         #expect(Set(f.looks.map(\.acc)) == Set(Look.Accessory.allCases.map(\.rawValue)))
         #expect(Set(f.looks.map(\.pattern)) == Set(Look.Pattern.allCases.map(\.rawValue)))
         for L in f.looks {
-            #expect(L.sprites.filter { !$0.highlight }.count == Pose.allCases.reduce(0) { $0 + $1.frameCount })
+            #expect(L.sprites.filter { !$0.highlight }.count == Pose.prototypePoses.reduce(0) { $0 + $1.frameCount })
         }
     }
 

@@ -1,6 +1,7 @@
 // M4 desktop tour: release the crew first, then replay. Every activity pose with its particles (typing
 // bits, Bash sparks, the telescope's twinkles, thinking dots), a sidekick with a "3" badge, a Done!
 // cheer with confetti at 6 s, a Needs you run at 10 s, and a sleeper or coffee drinker once idle.
+// Agentville's own poses: planning (clipboard), MCP (gadget and wrench), a failed turn (storm cloud).
 {"at": 0.0, "event": "UserPromptSubmit", "session": "tour-edit", "project": "api-server"}
 {"at": 0.0, "event": "PreToolUse", "session": "tour-edit", "project": "api-server", "tool": "Edit"}
 {"at": 0.0, "event": "UserPromptSubmit", "session": "tour-read", "project": "docs-site"}
@@ -22,6 +23,15 @@
 {"at": 0.0, "event": "PreToolUse", "session": "tour-ask", "project": "dotfiles", "tool": "Glob"}
 {"at": 0.0, "event": "UserPromptSubmit", "session": "tour-nap", "project": "homelab"}
 {"at": 0.5, "event": "Stop", "session": "tour-nap", "project": "homelab"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-plan", "project": "game-jam"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-plan", "project": "game-jam", "tool": "TodoWrite"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-mcp", "project": "homelab-mcp"}
+{"at": 0.0, "event": "PreToolUse", "session": "tour-mcp", "project": "homelab-mcp", "tool": "mcp"}
+{"at": 0.0, "event": "UserPromptSubmit", "session": "tour-fail", "project": "data-pipeline"}
+{"at": 0.3, "event": "StopFailure", "session": "tour-fail", "project": "data-pipeline"}
+{"at": 0.7, "expect": {"session": "tour-plan", "status": "working:planning"}}
+{"at": 0.7, "expect": {"session": "tour-mcp", "status": "working:tinkering"}}
+{"at": 0.7, "expect": {"session": "tour-fail", "status": "error"}}
 {"at": 0.7, "expect": {"session": "tour-subs", "status": "working:thinking", "subagents": 3}}
 {"at": 0.7, "expect": {"session": "tour-web", "status": "working:web"}}
 {"at": 6.0, "event": "Stop", "session": "tour-done", "project": "blog"}

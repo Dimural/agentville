@@ -3,21 +3,23 @@ import Foundation
 /// What the office shows: up to 6 desks, the theme and the wall clock (docs/design/office.md).
 public struct OfficeScene: Sendable {
     /// The prototype's activity names, which pick the office pose and monitor screen.
-    /// `other` is the prototype's fallback branch (desk typing, "…" screen).
-    public enum Act: String, CaseIterable, Sendable { case edit, read, bash, search, web, think, other }
+    /// `other` is the prototype's fallback branch (desk typing, "…" screen). `plan` and `tinker`
+    /// are Agentville's own (open question 12).
+    public enum Act: String, CaseIterable, Sendable { case edit, read, bash, search, web, think, plan, tinker, other }
 
     public enum DeskState: Equatable, Sendable {
         case idle, needsYou, finished
+        /// The last turn failed (Agentville's own, open question 12).
+        case error
         case working(Act)
 
-        /// Core status → office state. Planning and errors fall back to thinking, tinkering and
-        /// unknown tools to plain desk typing, until their own art exists (open question 12).
+        /// Core status → office state. Unknown tools fall back to plain desk typing.
         public init(_ status: SessionStatus) {
             switch status {
             case .idle: self = .idle
             case .needsYou: self = .needsYou
             case .finished: self = .finished
-            case .error: self = .working(.think)
+            case .error: self = .error
             case .working(let a):
                 switch a {
                 case .editing: self = .working(.edit)
@@ -25,8 +27,10 @@ public struct OfficeScene: Sendable {
                 case .running: self = .working(.bash)
                 case .searching: self = .working(.search)
                 case .web: self = .working(.web)
-                case .thinking, .planning: self = .working(.think)
-                case .tinkering, .working: self = .working(.other)
+                case .thinking: self = .working(.think)
+                case .planning: self = .working(.plan)
+                case .tinkering: self = .working(.tinker)
+                case .working: self = .working(.other)
                 }
             }
         }
@@ -130,6 +134,11 @@ public enum OfficeRenderer {
             U(&g, sx, sy, w, h, RGB(0x0F7A43))
             pattern(&g, ["....#", "...#.", "#.#..", ".#..."], sx + 5, sy + 3, RGB(0xFFF1E8))
             return
+        case .error:
+            // Agentville's own: a steady red cross (not blinking, unlike Needs you).
+            U(&g, sx, sy, w, h, RGB(0x2A1520))
+            pattern(&g, ["#...#", ".#.#.", "..#..", ".#.#.", "#...#"], sx + 5, sy + 2, RGB(0xFF004D))
+            return
         case .idle, .none:
             U(&g, sx, sy, w, h, RGB(0x15172C))
             let px = Int(abs(mod(t * 5, 28) - 14)), py = Int(abs(mod(t * 3.3, 16) - 8))
@@ -170,6 +179,21 @@ public enum OfficeRenderer {
                 U(&g, sx + 5, sy + 2, 6, 6, sea); U(&g, sx + 4, sy + 3, 8, 4, sea)
                 let o = tick % 8
                 U(&g, sx + 4 + o % 6, sy + 3, 2, 2, land); U(&g, sx + 5 + (o + 3) % 5, sy + 6, 2, 1, land)
+            case .plan:
+                // Agentville's own: a checklist ticking itself off, row by row.
+                U(&g, sx, sy, w, h, RGB(0xECEAF4))
+                let done = tick % 5
+                for i in 0..<4 {
+                    U(&g, sx + 2, sy + 1 + i * 2, 1, 1, i < done ? RGB(0x0B9A4B) : RGB(0x9A95B5))
+                    U(&g, sx + 4, sy + 1 + i * 2, 5 + (i * 3) % 6, 1, RGB(0x9A95B5))
+                }
+            case .tinker:
+                // Agentville's own: a plug and a progress bar filling up.
+                U(&g, sx, sy, w, h, RGB(0x1B1E34))
+                U(&g, sx + 6, sy + 1, 1, 2, RGB(0xA5ADC2)); U(&g, sx + 9, sy + 1, 1, 2, RGB(0xA5ADC2))
+                U(&g, sx + 5, sy + 3, 6, 2, RGB(0xA5ADC2))
+                U(&g, sx + 2, sy + 7, 12, 1, RGB(0x2E3156))
+                U(&g, sx + 2, sy + 7, tick % 13, 1, RGB(0x29ADFF))
             case .think, .other:
                 U(&g, sx, sy, w, h, RGB(0x1B1E34))
                 let n = tick % 4
@@ -186,6 +210,7 @@ public enum OfficeRenderer {
         case .needsYou: return (.wave, 5 + jsRound(abs(sin(t * 6)) * 2), 5, .icon(.bang))
         case .finished: return (.cheer, 4 + jsRound(abs(sin(t * 8)) * 3), 5, .icon(.check))
         case .idle: return (.nap, 0, 1, nil)
+        case .error: return (.error, 0, 2, .icon(.storm))
         case .working(let act):
             switch act {
             case .read: return (.read, 0, 1.2, nil)
@@ -193,6 +218,8 @@ public enum OfficeRenderer {
             case .web: return (.web, 0, 1.6, nil)
             case .think: return (.think, 0, 2, .dots(Int(floor(t * 3)) % 4))
             case .bash: return (.deskType, 0, 11, nil)
+            case .plan: return (.plan, 0, CrewSim.fps[.plan] ?? 1.5, nil)
+            case .tinker: return (.tinker, 0, CrewSim.fps[.tinker] ?? 4, nil)
             case .edit, .other: return (.deskType, 0, 6, nil)
             }
         }

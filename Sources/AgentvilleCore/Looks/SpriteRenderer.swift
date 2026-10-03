@@ -1,6 +1,15 @@
 /// Character poses (docs/design/sprites-and-poses.md#poses). Raw values are the prototype's pose names.
 public enum Pose: String, CaseIterable, Sendable {
     case idle, walk, type, deskType, read, bash, search, web, think, wave, cheer, coffee, sleep, nap, dangle, dizzy, blink
+    /// Agentville's own poses, for states the prototype never drew (open question 12): a checklist
+    /// on a clipboard (planning), a gadget and a wrench (MCP tools), and a head-scratching slump
+    /// under a storm cloud (a failed turn).
+    case plan, tinker, error
+
+    /// The poses ported from the prototype (golden-tested against its exports).
+    public static let prototypePoses = allCases.filter { !agentvillePoses.contains($0) }
+    /// Poses drawn for Agentville (docs/design/sprites-and-poses.md#agentvilles-own-poses).
+    public static let agentvillePoses: [Pose] = [.plan, .tinker, .error]
 
     /// Port of `frameCount(p)`.
     public var frameCount: Int { self == .walk ? 4 : 2 }
@@ -8,7 +17,8 @@ public enum Pose: String, CaseIterable, Sendable {
 
 /// Emote bubbles (port of `ICON` + `drawEmote`).
 public enum Emote: Equatable, Hashable, Sendable {
-    public enum Icon: String, CaseIterable, Sendable { case bang, check, heart, quest }
+    /// `storm` is Agentville's own (a failed turn); the rest are the prototype's `ICON`.
+    public enum Icon: String, CaseIterable, Sendable { case bang, check, heart, quest, storm }
     case icon(Icon)
     /// The animated "…" bubble with 0–3 dots (the prototype shows `floor(t*3) % 4`).
     case dots(Int)
@@ -52,8 +62,10 @@ public enum SpriteRenderer {
     private enum Arms {
         case down, swingA, swingB, typeA, typeB, lapA, lapB, book, hammerUp, hammerDown, magnifier
         case telescope, chin, waveA, waveB, up, upMid, mug, sip, rest
+        case clipboard, gadgetA, gadgetB, scratchA, scratchB
     }
     private enum Eyes { case open, down, up, closed, happy, wide, x }
+    private enum Mouth { case closed, open, frown }
     private enum Prop { case none, crt, laptop, book, lens, telescope }
 
     // swiftlint:disable:next function_body_length cyclomatic_complexity
@@ -64,7 +76,7 @@ public enum SpriteRenderer {
         func clear(_ x: Int, _ y: Int) { g.clear(x, y, 1, 1) }
 
         var dy = 0, legs = Legs.stand, arms = Arms.down, eyes = Eyes.open
-        var mouthOpen = false, prop = Prop.none, sit = false
+        var mouthOpen = false, prop = Prop.none, sit = false, frown = false
         switch pose {
         case .idle: dy = f != 0 ? 1 : 0
         case .walk:
@@ -86,6 +98,10 @@ public enum SpriteRenderer {
         case .dangle: legs = f != 0 ? .kickB : .kickA; arms = .up; eyes = .wide; mouthOpen = true
         case .dizzy: eyes = .x; mouthOpen = true; dy = f != 0 ? 1 : 0
         case .blink: eyes = .closed
+        // Agentville's own poses (not in the prototype).
+        case .plan: arms = .clipboard; eyes = .down; dy = f != 0 ? 1 : 0
+        case .tinker: arms = f != 0 ? .gadgetB : .gadgetA; eyes = .down
+        case .error: arms = f != 0 ? .scratchB : .scratchA; eyes = .down; dy = 1; frown = true
         }
         if sit { dy += 3 }
         let S1 = L.shirt, S2 = L.shirtD, SK = L.skin, PN = L.pants, PD = L.pantsD, SH = L.shoe
@@ -161,6 +177,7 @@ public enum SpriteRenderer {
         }
         P(9, 9 + dy, L.blush); P(14, 9 + dy, L.blush)
         if mouthOpen { R(11, 10 + dy, 2, 1, RGB(0x7A1F35)) }
+        if frown { R(11, 10 + dy, 2, 1, RGB(0x7A1F35)); P(10, 11 + dy, RGB(0x7A1F35)); P(13, 11 + dy, RGB(0x7A1F35)) }
         if L.acc == .shades && eyes != .x { R(9, ey, 6, 2, RGB(0x1A1330)); P(10, ey, RGB(0x8FD3FF)); P(13, ey, RGB(0x8FD3FF)) }
         if L.acc == .headphones { R(6, 1 + dy, 8, 1, RGB(0x3A3F5C)); R(6, 5 + dy, 2, 3, RGB(0x3A3F5C)); P(6, 6 + dy, L.cap) }
 
@@ -212,6 +229,31 @@ public enum SpriteRenderer {
             R(15, 14, 3, 3, RGB(0xF4F0E8)); R(15, 14, 3, 1, RGB(0x6B3B24)); P(18, 15, RGB(0xF4F0E8))
         case .sip: R(5, 16, 1, 3, S2); R(14, 15, 1, 2, S1); P(14, 14, SK); R(13, 11, 3, 3, RGB(0xF4F0E8)); P(16, 12, RGB(0xF4F0E8))
         case .rest: R(5, 13 + dy, 1, 3, S2); P(5, 16 + dy, SK); R(14, 13 + dy, 1, 3, S1); P(14, 16 + dy, SK)
+
+        // Agentville's own arms and props (not in the prototype).
+        case .clipboard:
+            // A clipboard held up in front: board, metal clip, paper with two lines; a tick lands on the second.
+            let board = RGB(0xB07A45), page = RGB(0xFFF4E6), ink = RGB(0x9A8F9F), tick = RGB(0x0B9A4B)
+            R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); R(14, 13 + dy, 1, 3, S1)
+            R(15, 9 + dy, 5, 8, board); R(16, 10 + dy, 3, 6, page); R(16, 9 + dy, 3, 1, metal)
+            R(16, 11 + dy, 2, 1, ink); R(16, 13 + dy, 2, 1, ink); P(18, 11 + dy, tick)
+            if f != 0 { P(18, 13 + dy, tick) } else { R(16, 15 + dy, 1, 1, ink) }
+            P(15, 16 + dy, SK)
+        case .gadgetA, .gadgetB:
+            // A little box with an antenna and a blinking light, turned with a wrench on its right.
+            let box = RGB(0x3A3F5C), led = arms == .gadgetA ? RGB(0xFF004D) : RGB(0x00E436)
+            R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); R(14, 14 + dy, 1, 2, S1); P(15, 16 + dy, SK)
+            R(15, 12 + dy, 4, 4, box); R(16, 13 + dy, 1, 1, RGB(0x5E6390)); P(17, 13 + dy, led)
+            R(16, 9 + dy, 1, 3, metal); P(16, 8 + dy, RGB(0xFFEC27))
+            // The wrench: a handle and an open-ended head, rocking up a row as it turns.
+            let wy = (arms == .gadgetA ? 14 : 13) + dy
+            R(19, wy, 3, 1, metal); R(22, wy - 1, 2, 1, metal); P(22, wy, metal); R(22, wy + 1, 2, 1, metal)
+        case .scratchA, .scratchB:
+            // Hand at the side of the head, scratching; a sweat drop slides down.
+            let up = arms == .scratchA ? 0 : 1, drop = RGB(0x8FD3FF)
+            R(5, 13 + dy, 1, 4, S2); P(5, 17 + dy, SK); P(14, 12 + dy, S1); R(15, 7 + up + dy, 1, 5 - up, S1)
+            P(15, 6 + up + dy, SK)
+            P(4, 5 + up * 2 + dy, drop); P(4, 6 + up * 2 + dy, drop)
         }
     }
 
@@ -223,7 +265,11 @@ public enum SpriteRenderer {
         .check: (RGB(0x0B9A4B), ["....#", "...##", "#.##.", "###..", ".#..."]),
         .heart: (RGB(0xFF3F7F), [".#.#.", "#####", "#####", ".###.", "..#.."]),
         .quest: (RGB(0x2B7BD6), [".###.", "....#", "..##.", ".....", "..#.."]),
+        // Agentville's own: a grey cloud; `*` cells take the bolt colour below.
+        .storm: (RGB(0x6E7690), [".###.", "#####", "..**.", ".**..", ".*..."]),
     ]
+    /// Second colour for `*` cells.
+    static let iconAccent: [Emote.Icon: RGB] = [.storm: RGB(0xFFA300)]
 
     /// Port of `drawEmote` at scale 1: a 9×10 bubble (9×9 plus a 1 px tail). The app scales it up.
     public static func emote(_ kind: Emote) -> PixelCanvas {
@@ -236,7 +282,9 @@ public enum SpriteRenderer {
         case .icon(let icon):
             let (color, pattern) = icons[icon]!
             for (r, row) in pattern.enumerated() {
-                for (col, ch) in row.enumerated() where ch == "#" { c.fill(2 + col, 2 + r, 1, 1, color) }
+                for (col, ch) in row.enumerated() where ch != "." {
+                    c.fill(2 + col, 2 + r, 1, 1, ch == "*" ? iconAccent[icon] ?? color : color)
+                }
             }
         }
         return c

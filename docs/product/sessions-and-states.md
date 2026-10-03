@@ -34,7 +34,7 @@ Consequences:
 | **working(activity)** | `UserPromptSubmit` → `thinking`; `PreToolUse` → activity from the tool; `PostToolUse` / `PostToolUseFailure` → `thinking` | Desk pose + matching monitor screen | Activity pose | Nothing |
 | **needsYou** | `PermissionRequest`; `Notification(permission_prompt)`; `Notification(elicitation_dialog / elicitation_url_dialog / agent_needs_input)` | Stands, waves, `!` emote, flashing red screen | Runs to the bottom of the screen, waves, `!` + "Needs you" | Walk-on, "Needs you" |
 | **finished** | `Stop` | Cheers, check emote, green screen | Confetti, "Done! · duration" | Walk-on, "Done!" (subject to the announce rule) |
-| **error** | `StopFailure` | New pose (TBD; see open question 12) | New pose (e.g. a small storm cloud) | Optional walk-on |
+| **error** | `StopFailure` | Slumps and scratches its head under a storm cloud; red cross on the monitor | Same pose and storm cloud between wanders | Optional walk-on (M6) |
 | **gone** | `SessionEnd`, or the staleness rule | Removed | Waves "Bye!", then a sparkle and dust poof | Nothing |
 
 Leaving **needsYou**: the next `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `UserPromptSubmit` or `Stop` for that session means the user answered.
@@ -70,8 +70,8 @@ This lives in **one place**: `Sources/AgentvilleCore/Sessions/ActivityMapping.sw
 | `Grep`, `Glob`, `LS` | `searching` | Searching | `search` |
 | `WebSearch`, `WebFetch` | `web` | On the web | `web` |
 | `Task`, `Agent` | *(no change)*: covered by the subagent mini-me | n/a | n/a |
-| `TodoWrite`, `TaskCreate`, `TaskUpdate`, `TaskList`, `ExitPlanMode`, `EnterPlanMode` | `planning` | Planning | new: clipboard (falls back to `think`) |
-| `mcp` (any MCP tool, already reduced by the hook) | `tinkering` | Tinkering | new: gadget (falls back to `deskType`) |
+| `TodoWrite`, `TaskCreate`, `TaskUpdate`, `TaskList`, `ExitPlanMode`, `EnterPlanMode` | `planning` | Planning | `plan` (clipboard) |
+| `mcp` (any MCP tool, already reduced by the hook) | `tinkering` | Tinkering | `tinker` (gadget and wrench) |
 | anything else | `working` | Working | `deskType` |
 | *(no tool; after a prompt or a tool finishing)* | `thinking` | Thinking | `think` + "…" |
 

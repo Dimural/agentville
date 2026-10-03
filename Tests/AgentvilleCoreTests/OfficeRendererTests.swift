@@ -91,11 +91,11 @@ struct OfficeRendererTests {
     @Test("Sessions map onto desk states (Core activities → prototype acts)")
     func sessionMapping() {
         let cases: [(SessionStatus, OfficeScene.DeskState)] = [
-            (.idle, .idle), (.needsYou, .needsYou), (.finished, .finished), (.error, .working(.think)),
+            (.idle, .idle), (.needsYou, .needsYou), (.finished, .finished), (.error, .error),
             (.working(.editing), .working(.edit)), (.working(.reading), .working(.read)),
             (.working(.running), .working(.bash)), (.working(.searching), .working(.search)),
             (.working(.web), .working(.web)), (.working(.thinking), .working(.think)),
-            (.working(.planning), .working(.think)), (.working(.tinkering), .working(.other)),
+            (.working(.planning), .working(.plan)), (.working(.tinkering), .working(.tinker)),
             (.working(.working), .working(.other)),
         ]
         for (status, want) in cases { #expect(OfficeScene.DeskState(status) == want, "\(status)") }

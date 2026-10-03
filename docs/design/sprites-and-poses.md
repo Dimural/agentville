@@ -63,7 +63,15 @@ All poses have **2 frames** except `walk` (4).
 | `dizzy` | after a hard throw | 4 | × eyes, two circling stars |
 | `blink` | idle blink | n/a | |
 
-**New poses (art TBD; open question 12):** `error` (`StopFailure`: trips, or a small storm cloud), `clipboard` (planning tools), `gadget` (MCP tools). Until drawn, they fall back to `think`, `think` and `deskType` respectively.
+## Agentville's own poses
+
+The prototype never drew these states. They are original art in the same style, added for open question 12 (answered 2026-10-03). There are no prototype exports to compare against, so `AgentvillePosesTests` checks their structure and the owner reviews the look. `Pose.prototypePoses` and `Pose.agentvillePoses` keep the two sets apart, so the golden test stays exact.
+
+| Pose | Used for | fps | Notes |
+|---|---|---|---|
+| `plan` | planning tools (`TodoWrite`, plan mode, tasks) | 1.5 | holds a clipboard (board `#B07A45`, metal clip, paper with two lines); a green tick lands on the second line in frame 2; nods |
+| `tinker` | MCP tools | 4 | holds a gadget (`#3A3F5C`) with an antenna and a light that blinks red/green; an open-ended wrench on its right rocks up a row; on the desktop, a little blue-white fizz on each turn |
+| `error` | a failed turn (`StopFailure`) | 2 | slumped 1 px, scratching its head, frowning, a sweat drop `#8FD3FF` sliding down; under the `storm` emote |
 
 ## Emotes
 
@@ -74,6 +82,7 @@ bang   ..#..  ..#..  ..#..  .....  ..#..
 check  ....#  ...##  #.##.  ###..  .#...
 heart  .#.#.  #####  #####  .###.  ..#..
 quest  .###.  ....#  ..##.  .....  ..#..
+storm  .###.  #####  ..**.  .**..  .*...   (Agentville's own: # grey #6E7690, * bolt #FFA300)
 dots   animated: floor(t*3) % 4 dots
 ```
 
