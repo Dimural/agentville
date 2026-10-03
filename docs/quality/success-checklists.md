@@ -40,7 +40,7 @@ Purpose: concrete, tickable definitions of success for the whole platform and ea
 - [ ] Every transition in [sessions-and-states.md](../product/sessions-and-states.md) has a test
 - [ ] Turn duration is correct (prompt → stop)
 - [ ] Subagents: add/remove per `agent_id`, several at once, stop-without-start is ignored
-- [ ] Staleness rules: a long `PreToolUse` survives; a silent idle session is pruned
+- [x] Staleness rules: a long `PreToolUse` survives; a silent idle session is pruned: `SessionStoreTests.staleness()`, `long-bash.jsonl`, `silent.jsonl`
 - [ ] 100 sessions × 500 events/s: bounded memory, < 50 ms per 1,000-event batch
 - [ ] Unknown sessions are created on first event; gone sessions don't resurrect (except on `SessionStart`)
 
@@ -63,8 +63,8 @@ Purpose: concrete, tickable definitions of success for the whole platform and ea
 - [ ] Release choreography matches the prototype (burp, 85 ms stagger, arcs, landings, shouts)
 - [ ] Recall completes ≤ 2.6 s from every state in non-negotiable #2
 - [ ] Every activity pose plays on the desktop, driven by replayed events
-- [ ] Meetings, sidekicks, crowd ("+N", "My turn!") and particles all work, and are capped
-- [ ] Crew inside + no walk-ons → scenes paused, poller stopped
+- [x] Meetings, sidekicks, crowd ("+N", "My turn!") and particles all work, and are capped: `CrewActivityTests`, `CrewCrowdTests`
+- [x] Crew inside + no walk-ons → scenes paused, poller stopped: 2026-10-03, 0.0% CPU at rest and again as soon as the last walk-on leaves (the poller runs in the scene's frame, so it stops with it)
 
 ## Input and grabbing
 
@@ -76,8 +76,8 @@ Purpose: concrete, tickable definitions of success for the whole platform and ea
 ## Walk-on notices
 
 - [ ] Done and Needs-you walk-ons match the prototype; ≤ 3 at once; "+N more" folding
-- [ ] The done-announcement setting is respected
-- [ ] Needs-you leaves when the session stops waiting
+- [x] The done-announcement setting is respected: `SessionStoreTests.announceSetting`, `CrewNoticeTests.announceRule`
+- [x] Needs-you leaves when the session stops waiting: `CrewNoticeTests.needsYouWalkOn`, `queueDrains`
 
 ## Install / Connect / Disconnect
 
