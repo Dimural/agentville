@@ -80,6 +80,8 @@ public enum Motion {
     public static let actAfterLanding = 0.6...1.6
     /// Cheer after a turn finishes.
     public static let cheer = 2.6
+    /// Hover fade: a character under the cursor eases to this opacity, at `min(1, dt·hoverEase)`.
+    public static let hoverAlpha = 0.16, hoverEase = 14.0
     /// Chance of a shout on release / recall.
     public static let releaseShoutChance = 0.35, recallShoutChance = 0.3
     /// Done!: the bubble stays 5 s; 26 confetti (a quarter with reduced motion).
@@ -93,7 +95,31 @@ public enum Motion {
 }
 
 /// What the crew says (docs/design/motion-and-behaviour.md#phrases).
+/// Grabbing, dragging and throwing (docs/design/motion-and-behaviour.md#throwing,
+/// docs/architecture/input-and-safety.md).
+public enum Grab {
+    /// Hit-box padding for grabbing and for the hover fade.
+    public static let pad = 4.0, hoverPad = 6.0
+    /// Less movement than this between press and release is a tap.
+    public static let tapDistance = 5.0
+    /// Held characters float this high.
+    public static let lift = 10.0
+    /// Throw samples kept, and the shortest time span they count over.
+    public static let samples = 6, minSampleSpan = 0.016
+    public static let maxSpeed = 1500.0, dizzySpeed = 900.0, shoutSpeed = 700.0
+    public static let verticalDamping = 0.6
+    public static let liftFactor = 0.35, minLift = 80.0, maxLift = 460.0
+    public static let wallBounce = 0.6, wallSquash = 0.8
+    public static let groundBounceSpeed = 260.0, groundBounce = 0.42, bounceDamping = 0.65
+    public static let friction = 7.0, settleSpeed = 18.0
+    public static let dizzyTime = 1.8
+    /// A tapped character hops (cheers) this long.
+    public static let tapCheer = 0.7
+}
+
 public enum Phrases {
+    public static let tap = ["hey!", "boop", "hi there", "*giggle*"]
+    public static let throwShout = ["waaah!", "whoa!", "aaa!"]
     public static let release = ["Wheee!", "Freedom!", "Hi!", "Let's go!", "Stretch time"]
     public static let recall = ["Coming!", "Okay!", "Back to work!", "On my way"]
     public static let meet = ["hi!", "nice commit", "lunch?", "high five!"]

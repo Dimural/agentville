@@ -84,10 +84,10 @@ Scope: everything a released character does on the desktop, driven by real or re
 
 Scope: the crew stays glass unless ⌥ is held over a character ([input-and-safety.md](../architecture/input-and-safety.md)). No permissions: modifier keys and the cursor are polled, never tapped; the shortcut uses Carbon's `RegisterEventHotKey`.
 
-- [ ] Core grab model (ports of `hitBox`, `hitTest`, the `pointerdown`/`pointermove` handlers, `endDrag`, the `thrown` mode, `settle`, dizziness): hit box, front-most wins, drag follows the cursor with its offset, tap = hop + "hey!"/"boop"/"hi there"/"*giggle*" + pink sparkles, throw from the first and last of 6 samples (cap 1500 pt/s, `vy × 0.6`, `vz = clamp(speed × 0.35, 80, 460)`), wall and ground bounces, slide friction, settle below 18 pt/s, > 900 pt/s → 1.8 s dizzy, > 700 → "waaah!"/"whoa!"/"aaa!". `CrewGrabTests`
-- [ ] The click-through decision (non-negotiable #1): capture the mouse only while ⌥ is held over a character, or while a drag is in progress. `CrewGrabTests`
-- [ ] Hover fade: a character under the cursor eases to 16% opacity (not in grab mode), at `min(1, dt·14)`. `CrewGrabTests`
-- [ ] Recall from mid-drag and mid-throw within 2.6 s (non-negotiable #2). `CrewGrabTests`
+- [x] Core grab model (ports of `hitBox`, `hitTest`, the `pointerdown`/`pointermove` handlers, `endDrag`, the `thrown` mode, `settle`, dizziness): hit box, front-most wins, drag follows the cursor with its offset, tap = hop + "hey!"/"boop"/"hi there"/"*giggle*" + pink sparkles, throw from the first and last of 6 samples (cap 1500 pt/s, `vy × 0.6`, `vz = clamp(speed × 0.35, 80, 460)`), wall and ground bounces, slide friction, settle below 18 pt/s, > 900 pt/s → 1.8 s dizzy, > 700 → "waaah!"/"whoa!"/"aaa!". `CrewGrabTests`
+- [x] The click-through decision (non-negotiable #1): capture the mouse only while ⌥ is held over a character, or while a drag is in progress. `CrewGrabTests`
+- [x] Hover fade: a character under the cursor eases to 16% opacity (not in grab mode), at `min(1, dt·14)`. `CrewGrabTests`
+- [x] Recall from mid-drag and mid-throw within 2.6 s (non-negotiable #2). `CrewGrabTests`
 - [ ] App: `InputPoller` (30–60 Hz, only while the crew is out) polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation`, flips `ignoresMouseEvents`; the overlay turns mouse down/drag/up into grabs; releasing ⌥ ends a drag; grab mode outlines everyone (highlight sprites)
 - [ ] HUD pill while the crew is out: "Clicks pass through · hold ⌥ to grab · ⌃⌥C calls them back"; in grab mode: "Grab mode · drag anyone, let go to throw"
 - [ ] ⌃⌥C toggles the crew from any app (Carbon hot key); the footer shows the "⌃⌥C toggles" hint

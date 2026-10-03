@@ -82,6 +82,10 @@ public struct CrewMember: Equatable, Sendable {
         case leave
         /// On the desktop: acting out its session, wandering between acts (prototype `roam`).
         case rest
+        /// Held by the user (⌥ + press): dangles at the cursor.
+        case drag
+        /// Let go with some speed: flies, bounces and slides (prototype `thrown`).
+        case thrown(vx: Double, vy: Double, hard: Bool)
     }
 
     public let id: String
@@ -99,6 +103,10 @@ public struct CrewMember: Equatable, Sendable {
     public var emote: Emote?
     public var bubble: Bubble?
     public var side: Sidekick?
+    /// Hover fade: eases to `Motion.hoverAlpha` while the cursor is over it.
+    public var alpha = 1.0
+    /// Seconds of seeing stars left after a hard throw.
+    var dizzy = 0.0
     var anim: Double
     var t = 0.0
     var blinkT: Double
@@ -176,11 +184,113 @@ public final class CrewSim {
     /// Sessions whose desks are empty because their character is out.
     public var awayIDs: Set<String> { Set(members.keys) }
 
+    /// ⌥ is held: everyone gets an outline and the hover fade is off.
+    public var grabMode = false
+    /// The cursor, in stage coordinates, while it's over the overlay's display (for the hover fade).
+    public var pointer: (x: Double, y: Double)?
+    /// The character being held, if any.
+    public var dragging: String? { drag?.id }
+    private struct Drag {
+        let id: String
+        let ox, oy: Double
+        var samples: [(x: Double, y: Double, t: Double)]
+        var moved = 0.0
+    }
+    private var drag: Drag?
+
     /// Tests only: put a character somewhere particular (`@testable`).
     func modify(_ id: String, _ body: (inout CrewMember) -> Void) {
         guard var m = members[id] else { return }
         body(&m)
         members[id] = m
+    }
+
+    // MARK: - Grabbing (ports of hitBox, hitTest, the pointer handlers, endDrag, settle)
+
+    /// Port of `hitBox`: feet at (x, y), `8·S` either side, `24·S` tall above the lift.
+    func hit(_ m: CrewMember, x px: Double, y py: Double, pad: Double) -> Bool {
+        let sc = m.scale, top = m.y - m.z - m.hop - 24 * sc, w = 8 * sc
+        return px > m.x - w - pad && px < m.x + w + pad && py > top - pad && py < m.y + pad
+    }
+
+    /// Port of `hitTest`: the front-most (lowest on screen) grabbable character under the point.
+    public func hitTest(x: Double, y: Double) -> String? {
+        members.values
+            .filter { m in
+                switch m.mode {
+                case .rest, .thrown, .drop: true
+                case .fly, .wait, .leave, .drag: false
+                }
+            }
+            .sorted { $0.y > $1.y || ($0.y == $1.y && $0.id < $1.id) }
+            .first { hit($0, x: x, y: y, pad: Grab.pad) }?.id
+    }
+
+    /// Non-negotiable #1: the overlay takes the mouse only while ⌥ is held over a character, or
+    /// while a drag is in progress. Everything else goes to the apps underneath.
+    public func capturesMouse(optionHeld: Bool, x: Double, y: Double) -> Bool {
+        drag != nil || (optionHeld && hitTest(x: x, y: y) != nil)
+    }
+
+    /// Press on a character (prototype `pointerdown`): it's lifted and dangles.
+    public func grab(_ id: String, x: Double, y: Double, at t: Double) {
+        guard drag == nil, var m = members[id] else { return }
+        drag = Drag(id: id, ox: m.x - x, oy: m.y - y, samples: [(x, y, t)])
+        m.mode = .drag
+        m.z = Grab.lift
+        m.vz = 0
+        m.bubble = nil
+        members[id] = m
+    }
+
+    /// Cursor moved while holding (prototype `pointermove`).
+    public func dragTo(x: Double, y: Double, at t: Double) {
+        guard var d = drag, var m = members[d.id] else { return }
+        d.moved += hypot(x + d.ox - m.x, y + d.oy - m.y)
+        m.x = clamp(x + d.ox, 20, stage.width - 20)
+        m.y = clamp(y + d.oy + Grab.lift, stage.minY, stage.bottom - 8)
+        m.z = Grab.lift
+        if m.x < x + d.ox - 1 { m.face = 1 } else if m.x > x + d.ox + 1 { m.face = -1 }
+        d.samples.append((x, y, t))
+        if d.samples.count > Grab.samples { d.samples.removeFirst() }
+        members[d.id] = m
+        drag = d
+    }
+
+    /// Let go (prototype `endDrag`): a tap hops, anything else is a throw. `cancel` just sets it down.
+    public func endDrag(cancel: Bool) {
+        guard let d = drag else { return }
+        drag = nil
+        guard var m = members[d.id] else { return }
+        defer { members[d.id] = m }
+        if cancel {
+            m.z = 0
+            settle(&m)
+            return
+        }
+        if d.moved < Grab.tapDistance {
+            m.z = 0
+            settle(&m)
+            m.cheerT = Grab.tapCheer
+            m.bubble = Bubble(text: pick(Phrases.tap), until: time + 1)
+            sparkle(x: m.x, y: m.y - 40, count: 4, color: RGB(0xFF77A8))
+            return
+        }
+        let a = d.samples[0], b = d.samples[d.samples.count - 1]
+        let span = max(Grab.minSampleSpan, b.t - a.t)
+        var vx = (b.x - a.x) / span, vy = (b.y - a.y) / span
+        let speed = hypot(vx, vy)
+        if speed > Grab.maxSpeed { vx *= Grab.maxSpeed / speed; vy *= Grab.maxSpeed / speed }
+        m.vz = clamp(speed * Grab.liftFactor, Grab.minLift, Grab.maxLift)
+        m.mode = .thrown(vx: vx, vy: vy * Grab.verticalDamping, hard: speed > Grab.dizzySpeed)
+        if speed > Grab.shoutSpeed { m.bubble = Bubble(text: pick(Phrases.throwShout), until: time + 0.9) }
+    }
+
+    /// Port of `settle`: back to roaming where it landed.
+    private func settle(_ m: inout CrewMember) {
+        m.mode = .rest
+        m.phase = .act
+        m.tx = m.x; m.ty = m.y
     }
 
     // MARK: - Release and recall
@@ -202,6 +312,7 @@ public final class CrewSim {
     /// still out after `Timing.recallForceComplete` is removed (non-negotiable #2).
     public func recall() {
         guard released else { return }
+        endDrag(cancel: true)
         released = false
         token += 1
         pending.removeAll { if case .spawn = $0.action { true } else { false } }
@@ -271,7 +382,7 @@ public final class CrewSim {
                 guard t == token, !released else { continue }
                 for (id, m) in members {
                     switch m.mode {
-                    case .fly, .wait, .drop: members[id] = nil
+                    case .fly, .wait, .drop, .drag, .thrown: members[id] = nil
                     case .leave, .rest: break
                     }
                 }
@@ -393,6 +504,46 @@ public final class CrewSim {
             }
         case .rest:
             pose = roam(&m, dt: dt, session: sessions[id])
+        case .drag:
+            pose = .dangle
+            m.z = Grab.lift
+        case .thrown(var vx, var vy, let hard):
+            // Port of the `thrown` branch of `updateEnt`.
+            m.x += vx * dt
+            m.y += vy * dt
+            if m.x < 24 { m.x = 24; vx = abs(vx) * Grab.wallBounce; m.squash = Grab.wallSquash }
+            if m.x > stage.width - 24 { m.x = stage.width - 24; vx = -abs(vx) * Grab.wallBounce; m.squash = Grab.wallSquash }
+            if m.y < stage.minY { m.y = stage.minY; vy = abs(vy) * Grab.wallBounce }
+            if m.y > stage.bottom - 10 { m.y = stage.bottom - 10; vy = -abs(vy) * Grab.wallBounce }
+            m.mode = .thrown(vx: vx, vy: vy, hard: hard)
+            if m.z > 0 || m.vz > 0 {
+                m.vz -= Motion.gravity * dt
+                m.z += m.vz * dt
+                pose = .dangle
+                if m.z <= 0 {
+                    m.z = 0
+                    if m.vz < -Grab.groundBounceSpeed {
+                        m.vz = -m.vz * Grab.groundBounce
+                        m.mode = .thrown(vx: vx * Grab.bounceDamping, vy: vy * Grab.bounceDamping, hard: hard)
+                        m.squash = 1
+                        dust(x: m.x, y: m.y, count: 4)
+                    } else {
+                        m.vz = 0
+                        land(&m)
+                    }
+                }
+            } else {
+                let f = exp(-Grab.friction * dt)
+                vx *= f; vy *= f
+                m.mode = .thrown(vx: vx, vy: vy, hard: hard)
+                pose = .idle
+                if chance(dt * 12), hypot(vx, vy) > 60 { dust(x: m.x, y: m.y, count: 1) }
+                if hypot(vx, vy) < Grab.settleSpeed {
+                    settle(&m)
+                    m.timer = rand(1...2)
+                    if hard { m.dizzy = Grab.dizzyTime }
+                }
+            }
         }
         if m.mode != .rest { m.hop = 0 }
         followWithSidekick(&m, dt: dt, session: sessions[id])
@@ -402,6 +553,11 @@ public final class CrewSim {
         if m.blinkT < -0.12 { m.blinkT = rand(2.5...5) }
         if pose != m.pose { m.pose = pose; m.anim = 0 }
         m.frame = Int(m.anim * (Self.fps[pose] ?? 2)) % pose.frameCount
+
+        // Hover fade: whoever is under the cursor turns see-through (not in grab mode).
+        var target = 1.0
+        if let p = pointer, !grabMode, hit(m, x: p.x, y: p.y, pad: Grab.hoverPad) { target = Motion.hoverAlpha }
+        m.alpha += (target - m.alpha) * min(1, dt * Motion.hoverEase)
         members[id] = m
     }
 
@@ -413,6 +569,7 @@ public final class CrewSim {
     private func roam(_ m: inout CrewMember, dt: Double, session: Session?) -> Pose {
         guard let s = session else { m.hop = 0; return .idle }
         m.look = s.look
+        if m.dizzy > 0 { m.dizzy -= dt; m.hop = 0; return .dizzy }
         // A turn just finished (port of `onDone`): cheer, say Done! with the turn time, confetti.
         if s.status == .finished, m.lastStatus != nil, m.lastStatus != .finished {
             m.cheerT = Motion.cheer
