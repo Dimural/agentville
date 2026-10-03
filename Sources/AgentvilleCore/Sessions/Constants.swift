@@ -38,6 +38,13 @@ public enum Timing {
     public static let announceDoneMinTurn: TimeInterval = 20
     /// Recall force-complete.
     public static let recallForceComplete: TimeInterval = 2.6
+    /// Bug 0001: an awake overlay without a frame for this long is taken off screen (`OverlayWatchdog`).
+    public static let overlayStall: TimeInterval = 2
+    /// …and tried again after this, doubling each time it stalls again, up to `overlayRetryMax`.
+    public static let overlayRetryFirst: TimeInterval = 1
+    public static let overlayRetryMax: TimeInterval = 30
+    /// How often the app asks the watchdog while the overlay is awake.
+    public static let overlayCheck: TimeInterval = 1
 
     /// Staleness: silence after which a session is removed, by what it was last doing.
     public enum Stale {
