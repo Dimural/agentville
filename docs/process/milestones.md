@@ -2,7 +2,7 @@
 
 Purpose: the build order. Each milestone ends with something the owner can see and check. Tick items only with evidence.
 
-**Current milestone: M4** (waiting only on the owner's look at the three new poses). M3 is done: the owner checked click-through and approved release and recall on 2026-10-02. M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
+**Current milestone: M5** (⌥ grab, drag, throw; hover fade; global shortcut). M4 is done apart from the owner's look at the three new poses. M3 is done: the owner checked click-through and approved release and recall on 2026-10-02. M2 is done: the owner approved the desk panel on 2026-10-02. M1 is done: replay and real sessions verified by the owner on 2026-10-01. M0 is done apart from the owner's answers.
 
 | # | Milestone | Done when |
 |---|---|---|
@@ -79,6 +79,20 @@ Scope: everything a released character does on the desktop, driven by real or re
 - [x] Owner's side-by-side review of the desktop tour against the prototype: approved 2026-10-02
 - [x] Error, planning and MCP poses (open question 12, answered 2026-10-03): original `plan`, `tinker` and `error` poses plus a `storm` emote, at the desk (own monitor screens) and on the desktop (tinkering fizzes). `AgentvillePosesTests`; preview sheet and office render checked 2026-10-03
 - [ ] Owner's look at the three new poses (`--release-crew` with a planning, an MCP and a failed session)
+
+## M5: grab, drag, throw; hover fade; global shortcut
+
+Scope: the crew stays glass unless ⌥ is held over a character ([input-and-safety.md](../architecture/input-and-safety.md)). No permissions: modifier keys and the cursor are polled, never tapped; the shortcut uses Carbon's `RegisterEventHotKey`.
+
+- [ ] Core grab model (ports of `hitBox`, `hitTest`, the `pointerdown`/`pointermove` handlers, `endDrag`, the `thrown` mode, `settle`, dizziness): hit box, front-most wins, drag follows the cursor with its offset, tap = hop + "hey!"/"boop"/"hi there"/"*giggle*" + pink sparkles, throw from the first and last of 6 samples (cap 1500 pt/s, `vy × 0.6`, `vz = clamp(speed × 0.35, 80, 460)`), wall and ground bounces, slide friction, settle below 18 pt/s, > 900 pt/s → 1.8 s dizzy, > 700 → "waaah!"/"whoa!"/"aaa!". `CrewGrabTests`
+- [ ] The click-through decision (non-negotiable #1): capture the mouse only while ⌥ is held over a character, or while a drag is in progress. `CrewGrabTests`
+- [ ] Hover fade: a character under the cursor eases to 16% opacity (not in grab mode), at `min(1, dt·14)`. `CrewGrabTests`
+- [ ] Recall from mid-drag and mid-throw within 2.6 s (non-negotiable #2). `CrewGrabTests`
+- [ ] App: `InputPoller` (30–60 Hz, only while the crew is out) polls `NSEvent.modifierFlags` and `NSEvent.mouseLocation`, flips `ignoresMouseEvents`; the overlay turns mouse down/drag/up into grabs; releasing ⌥ ends a drag; grab mode outlines everyone (highlight sprites)
+- [ ] HUD pill while the crew is out: "Clicks pass through · hold ⌥ to grab · ⌃⌥C calls them back"; in grab mode: "Grab mode · drag anyone, let go to throw"
+- [ ] ⌃⌥C toggles the crew from any app (Carbon hot key); the footer shows the "⌃⌥C toggles" hint
+- [ ] Manual: no permission prompt; grab, throw and tap over real apps; releasing ⌥ is click-through again at once
+- [ ] Owner's review of grabbing against the prototype
 
 ## Later milestones
 
