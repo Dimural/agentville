@@ -43,6 +43,8 @@ public enum Timing {
     /// …and tried again after this, doubling each time it stalls again, up to `overlayRetryMax`.
     public static let overlayRetryFirst: TimeInterval = 1
     public static let overlayRetryMax: TimeInterval = 30
+    /// The overlay goes on screen transparent and is revealed after this many frames (bug 0001).
+    public static let overlayRevealFrames = 2
     /// A longer gap between overlay frames is logged to `Diagnostics` as a hitch.
     public static let overlayFrameGap: TimeInterval = 0.25
     /// How often the app asks the watchdog while the overlay is awake.

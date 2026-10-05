@@ -33,6 +33,9 @@ final class OverlayController {
     /// Uptime of the last wake, until its first frame is logged.
     private var wokeAt: TimeInterval?
     private var lastFrameAt: TimeInterval?
+    /// Frames drawn while transparent; revealed at `Timing.overlayRevealFrames`.
+    private var framesSinceReveal = 0
+    private var hiddenByStall = false
     private var displayAsleep = false
     private var observers: [(NotificationCenter, NSObjectProtocol)] = []
 
@@ -149,6 +152,10 @@ final class OverlayController {
     /// On screen and running, watched.
     private func present() {
         scene.resetClock()
+        // On screen but transparent until SpriteKit has drawn (bug 0001): a window that is up
+        // without a frame shows as flat grey, so it's revealed only once frames arrive.
+        window.alphaValue = 0
+        framesSinceReveal = 0
         window.orderFrontRegardless()
         view.isPaused = false
         if window.frame != screenFrame {
@@ -162,6 +169,12 @@ final class OverlayController {
     }
 
     // MARK: - Watchdog, displays (bug 0001)
+
+    /// Dev only (`--dev-stall`): stops SpriteKit as a stuck renderer would, to try the watchdog.
+    func devStall() {
+        log("dev: renderer paused")
+        view.isPaused = true
+    }
 
     private func startWatching() {
         guard watchTimer == nil else { return }
@@ -191,17 +204,40 @@ final class OverlayController {
         }
         lastFrameAt = now
         if let a = watchdog.frame(at: now) { apply(a, because: "frames resumed") }
+        // Reveal only after a frame has been drawn (this is called before the scene renders).
+        if window.alphaValue < 1, watchdog.visible {
+            framesSinceReveal += 1
+            if framesSinceReveal >= Timing.overlayRevealFrames {
+                window.alphaValue = 1
+                if hiddenByStall { hiddenByStall = false; log("overlay visible again") }
+            }
+        }
     }
 
     private func checkFrames() {
         let now = AppDelegate.now()
-        // Hidden behind a full-screen app's Space, frames may stop on purpose: not a stall.
-        if watchdog.visible, !window.occlusionState.contains(.visible) {
+        // Hidden behind a full-screen app's Space, frames may stop on purpose: not a stall. (Not
+        // while we've made it transparent ourselves: that may count as occluded too.)
+        if watchdog.visible, window.alphaValue == 1, !window.occlusionState.contains(.visible) {
             _ = watchdog.frame(at: now)
             return
         }
         guard let a = watchdog.check(at: now) else { return }
-        apply(a, because: a == .hide ? "no frame for \(Int(Timing.overlayStall)) s (stall \(watchdog.stalls))" : "retrying")
+        switch a {
+        case .hide: apply(.hide, because: "no frame for \(Int(Timing.overlayStall)) s (stall \(watchdog.stalls))")
+        case .show: kick()
+        }
+    }
+
+    /// A retry: restart SpriteKit's rendering without showing anything. Only a frame reveals the
+    /// window again (`frameDrawn`), so a renderer that stays stuck never flashes grey.
+    private func kick() {
+        log("overlay renderer restarted (stall \(watchdog.stalls))")
+        if !window.isVisible { window.orderFrontRegardless() }
+        view.isPaused = true
+        view.isPaused = false
+        if watchdog.stalls >= 2 { view.presentScene(scene) }
+        scene.resetClock()
     }
 
     private func apply(_ action: OverlayWatchdog.Action, because why: String) {
@@ -210,11 +246,15 @@ final class OverlayController {
             // The window's state at the moment, so a stall leaves a trace (bug 0001).
             let state = "occlusion visible: \(window.occlusionState.contains(.visible)), active Space: \(window.isOnActiveSpace), "
                 + "paused: \(view.isPaused), frame \(Self.size(window.frame)), app active: \(NSApp.isActive)"
-            log("overlay off screen: \(why); \(state)")
-            window.orderOut(nil)
+            log("overlay hidden: \(why); \(state)")
+            // Transparent, not ordered out, so SpriteKit can keep (or start) drawing.
+            window.alphaValue = 0
+            window.ignoresMouseEvents = true
+            framesSinceReveal = 0
+            hiddenByStall = true
         case .show:
-            log("overlay back on screen: \(why)")
-            window.orderFrontRegardless()
+            // Frames are coming again: `frameDrawn` reveals the window after the next one.
+            log("overlay drawing again: \(why)")
             view.isPaused = false
         }
     }

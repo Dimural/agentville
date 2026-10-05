@@ -3,7 +3,7 @@
 # while the crew's overlay was up. Runs private copies of the release app with the crew out under a
 # steady event load and watches their overlay windows (Tools/soak/overlay-probe.swift), flagging any
 # frame that is mostly opaque. Also collects each copy's diagnostics (`--diagnostics-stderr`) so a
-# watchdog trip ("overlay off screen") shows up even if the probe misses the moment.
+# watchdog trip ("overlay hidden") shows up even if the probe misses the moment.
 #
 # Usage: scripts/soak-overlay.sh [--minutes 10] [--copies 2] [--rate 200]
 # Needs a logged-in Mac and Screen Recording permission for the terminal. Not part of scripts/ci.sh.
@@ -54,12 +54,12 @@ echo "soak: $copies copies, $minutes min, $rate events/s each; output in $dir"
 status=0
 "$dir/overlay-probe" --pids "$(IFS=,; echo "${pids[*]}")" --seconds "$seconds" --interval 1 --out "$dir" || status=1
 
-trips=$(cat "$dir"/diag-*.txt | grep -c "overlay off screen" || true)
+trips=$(cat "$dir"/diag-*.txt | grep -c "overlay hidden" || true)
 echo "watchdog trips: $trips"
 for i in $(seq "$copies"); do
   if ! kill -0 "${pids[$((i - 1))]}" 2>/dev/null; then echo "copy $i exited early"; status=1; fi
 done
-if [[ $trips -gt 0 ]]; then grep -h "overlay off screen\|display\|first frame" "$dir"/diag-*.txt | head -40; status=1; fi
+if [[ $trips -gt 0 ]]; then grep -h "overlay hidden\|display\|first frame" "$dir"/diag-*.txt | head -40; status=1; fi
 if [[ $status -eq 0 ]]; then echo "soak-overlay: no opaque frame, no stall"; rm -rf "$dir"
 else echo "soak-overlay: SOMETHING TO LOOK AT; kept $dir"; fi
 exit $status

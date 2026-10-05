@@ -5,8 +5,9 @@ import Foundation
 /// The overlay is a full-screen window. If its scene stops delivering frames while it's up, a lost
 /// or unpresented surface could cover the whole screen. So while the overlay is awake the app
 /// reports every frame and checks about once a second. After `Timing.overlayStall` without a frame
-/// the window is taken off screen (`.hide`). It is tried again (`.show`) after a backoff that doubles
-/// from `Timing.overlayRetryFirst` up to `Timing.overlayRetryMax`, or at once when a frame arrives.
+/// the window is hidden (`.hide`: the app makes it transparent). From `check`, `.show` means "try
+/// again" (the app restarts rendering) after a backoff that doubles from `Timing.overlayRetryFirst`
+/// up to `Timing.overlayRetryMax`; from `frame`, it means frames are back.
 /// Pure, so it is tested without a window.
 public struct OverlayWatchdog: Sendable {
     public enum Action: Equatable, Sendable { case hide, show }

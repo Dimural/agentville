@@ -197,6 +197,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func devFlags() {
         let args = CommandLine.arguments
         if args.contains("--show-settings") { showSettings() }
+        if args.contains("--dev-stall") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in MainActor.assumeIsolated { self?.overlay?.devStall() } }
+        }
         guard Installer.homeOverride != nil else { return }
         if args.contains("--dev-connect=settings") {
             showWelcome()

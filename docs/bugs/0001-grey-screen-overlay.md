@@ -1,8 +1,22 @@
 # 0001: The whole screen turned flat grey while the crew's overlay was up
 
-Status: **Open**, not yet reproduced. Blocks closing M6 ([milestones.md](../process/milestones.md)).
+Status: **Fix in place, watching.** Matched to a stuck renderer on 2026-10-04 (below); root cause of the stuck renderer not yet known. Blocks closing M6 ([milestones.md](../process/milestones.md)).
 Severity: **Critical.** While it lasts the user can't see anything but the menu bar. That breaks the promise that the crew is glass ([non-negotiables](../quality/non-negotiables.md) #1) and would make anyone uninstall the app.
 Reported: 2026-10-03 by the owner, during the M6 checks.
+
+## Seen again, and matched (2026-10-04)
+
+The owner saw the grey screen **about five times in a row at roughly 21:32**. That's exactly when soak run 5's one bad run was going (a single copy started with `--release-crew` at about 21:31, 100 sessions, 200 events/s): its frames stopped and the watchdog fired **five times**. At the time, each watchdog retry ordered the window back on screen and hid it again 2 s later, so the five grey flashes were very likely those five retries. What that tells us:
+
+- **Grey is the overlay window on screen without a drawn frame.** WindowServer shows it as flat grey.
+- Five trips in that run is what the backoff (1, 2, 4, 8, 16 s) gives if frames **never started** after launch. Both incidents involved a copy started with `--release-crew`, which shows the overlay at launch. Not reproduced in 15 more launches, so it's intermittent.
+
+**Fix (2026-10-04): the overlay is only ever visible while SpriteKit is delivering frames.**
+
+- On every wake the window goes on screen with `alphaValue = 0` and is revealed after `Timing.overlayRevealFrames` (2) frames. A renderer that never starts can't show grey.
+- A stall makes the window transparent (and click-through) instead of ordering it out, so SpriteKit stays free to draw.
+- A watchdog retry no longer shows the window: it restarts rendering (pause and unpause, and re-presents the scene from the second stall on). Only a frame reveals the window again ("overlay visible again"). So a stuck renderer no longer flashes grey.
+- Checked with `--dev-stall` (pauses SpriteKit 5 s after release): hidden 2 s later with the window's state logged, restarted at the first retry, visible again 35 ms after that. Normal wakes still show the crew (first frame about 20 ms).
 
 ## What the owner saw
 
@@ -109,7 +123,7 @@ Still worth trying, with someone at the Mac: lock and unlock, display sleep and 
 
 ## Done when
 
-- [ ] Reproduced, or the cause found by instrumentation
-- [ ] Fixed, with a regression check (the soak harness, or a test where possible)
+- [x] Reproduced, or the cause found by instrumentation: 2026-10-04, the owner's sighting matched a logged stall (grey = the overlay up without a frame)
+- [ ] Fixed, with a regression check (the soak harness, or a test where possible). Fixed so the stall can't show grey (`--dev-stall` check); the stall itself is not yet explained
 - [ ] The harness runs for an hour under load with no opaque frame
 - [ ] Owner confirms it hasn't recurred over a week of normal use
