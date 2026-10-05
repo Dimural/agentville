@@ -127,6 +127,7 @@ struct StatusLines: View {
                     Label("Connected. Restart any open Claude Code sessions to see them.", systemImage: "checkmark.circle.fill")
                         .foregroundStyle(Color(nsColor: Theme.ok))
                         .font(.system(size: 12.5, weight: .semibold))
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Text(model.liveLine(now: now))
                     .font(.system(size: 12))

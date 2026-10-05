@@ -207,7 +207,10 @@ final class OverlayController {
     private func apply(_ action: OverlayWatchdog.Action, because why: String) {
         switch action {
         case .hide:
-            log("overlay off screen: \(why)")
+            // The window's state at the moment, so a stall leaves a trace (bug 0001).
+            let state = "occlusion visible: \(window.occlusionState.contains(.visible)), active Space: \(window.isOnActiveSpace), "
+                + "paused: \(view.isPaused), frame \(Self.size(window.frame)), app active: \(NSApp.isActive)"
+            log("overlay off screen: \(why); \(state)")
             window.orderOut(nil)
         case .show:
             log("overlay back on screen: \(why)")

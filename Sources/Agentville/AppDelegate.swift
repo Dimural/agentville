@@ -191,8 +191,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Dev only, to try the windows and Connect without clicking (with `AGENTVILLE_HOME` set, so the
-    /// real ~/.claude is never touched): `--show-settings`; `--dev-connect=settings` shows Path B's
-    /// preview, then approves it 3 s later; `--dev-disconnect` disconnects after 2 s.
+    /// real ~/.claude is never touched): `--show-settings`; `--dev-connect=auto` presses Connect;
+    /// `--dev-connect=settings` shows Path B's preview, then approves it 3 s later;
+    /// `--dev-disconnect` disconnects after 2 s.
     private func devFlags() {
         let args = CommandLine.arguments
         if args.contains("--show-settings") { showSettings() }
@@ -201,6 +202,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showWelcome()
             connect.preparePreview()
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in MainActor.assumeIsolated { self?.connect.confirmPreview() } }
+        }
+        if args.contains("--dev-connect=auto") {
+            showWelcome()
+            Task { @MainActor [weak self] in await self?.connect.connect() }
         }
         if args.contains("--dev-disconnect") {
             Task { @MainActor [weak self] in

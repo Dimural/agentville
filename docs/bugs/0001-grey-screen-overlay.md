@@ -81,10 +81,16 @@ Later the same day: every gap of more than 250 ms between overlay frames is logg
 | 1 | 1 min, 2 copies, 200 events/s each | 86 captures, most opaque 5.2%, no watchdog trip |
 | 2 | 30 min, 2 copies, 200 events/s each, builds running alongside | 2,510 captures, none mostly opaque (most 5.7%), no watchdog trip. **Caveat:** the owner's Mac locked partway through (the copies logged a display change at 17:44:50; the display turned off at 18:14), so most of this ran behind the lock screen and doesn't count towards the hour in "Done when" |
 | 3 | 2 min, 2 copies, Mac locked, display off | Overlays never drew a frame; the watchdog took them off screen twice per copy, as designed. The harness flagged this, correctly |
+| 4 (2026-10-04) | 20 min, 2 copies, 200 events/s each, **unlocked, display on throughout** (checked at the end) | 1,632 captures, none mostly opaque (most 5.8%), no watchdog trip, no frame gap over 250 ms. The first valid stretch towards the hour |
+| 5 (2026-10-04) | 11 runs of 45 s, one copy, 100 sessions, 200 events/s, unlocked, no probe | **One run (21:31) had frames stop for ~40 s while the window counted as visible**: 5 watchdog trips (it was taken off screen and retried with backoff each time), no frame gap logged because frames never resumed before the run ended. The other 10 runs were clean. The run's log wasn't kept and the system log had nothing for that minute. Since then the watchdog's line records the window's state (occlusion, active Space, paused, frame, app active) |
 
 Learned on the way, all from the lock screen, not Agentville:
 - **Behind the lock screen, WindowServer shows every app window at 90% around the screen's centre** (the window list reports the overlay at 1324×862 on a 1470×956 display while AppKit's frame is unchanged), the overlay is occluded, and SpriteKit stops drawing. While the copies were behind it, SpriteKit logged "SKView: no drawables available for rendering. Skipping this frame." every 5–6 s; single copies on an unlocked screen don't (3 runs of 60 s: idle, under load, under load with the probe).
 - The probe now finds the overlay by owner and level rather than exact size, and reports a window shown at a size other than the display's.
+
+2026-10-04, unlocked: the "no drawables" warning also shows in two-copy soaks on an unlocked screen (about every 6 s per copy, from launch) and once in a single copy (2 in one 45 s run), never with a frame gap, so SpriteKit gives up on a drawable quickly rather than waiting. Unexplained; no visible effect so far.
+
+The frame stop in run 5 is the closest thing to the bug seen so far: if the window had stayed up while not drawing, the screen could have shown whatever WindowServer keeps for it. With the watchdog it was off screen within about 2 s.
 
 Still worth trying, with someone at the Mac: lock and unlock, display sleep and wake, and plugging in or removing an external display, all with the crew out (`scripts/soak-overlay.sh` running alongside).
 
