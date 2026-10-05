@@ -23,10 +23,10 @@ public enum SessionStatus: Equatable, Sendable {
 /// One Claude Code session as the app knows it. Only allowlisted data lives here.
 public struct Session: Equatable, Sendable {
     public let id: String
-    public let project: String
+    public internal(set) var project: String
     public let look: Look
     /// 1 for the first session in a folder; 2, 3… for later twins (badge in the UI).
-    public let twinIndex: Int
+    public internal(set) var twinIndex: Int
     public let createdAt: TimeInterval
 
     public internal(set) var status: SessionStatus = .idle

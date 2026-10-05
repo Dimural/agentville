@@ -12,6 +12,8 @@ public enum ClaudeCLI {
         ["plugin", "marketplace", "add", marketplace],
         ["plugin", "install", plugin, "--scope", "user"],
     ]
+    /// When the plugin is installed but turned off.
+    public static let enableCommand = ["plugin", "enable", plugin]
     public static let disconnectCommands: [[String]] = [
         ["plugin", "uninstall", plugin],
     ]
