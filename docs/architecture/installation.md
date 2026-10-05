@@ -40,6 +40,8 @@ For people who only use the desktop app or VS Code:
 - "Connected. Restart any open Claude Code sessions to see them."
 - A live line: "Waiting for the first event…" → "Last event 3 s ago".
 - If nothing arrives after a while: check for `"disableAllHooks": true` and explain.
+- **Built (M7):** `Connection` (Core) reads `installed_plugins.json` (is `agentville@agentville` there?) and `settings.json` (is it turned off in `enabledPlugins`? are our marked hooks there?) and says none / plugin / plugin turned off / settings file / both. `Connection.liveLine` and `Connection.explanation` (disableAllHooks at once; the restart reminder 90 s after a Connect with no events). `ConnectionTests`. A plugin that's installed but turned off is turned back on with `claude plugin enable agentville@agentville`.
+- **Trying it safely:** `AGENTVILLE_HOME=/tmp/x` makes the app use a pretend home for all of this (its `.claude`, its helper link, and `HOME` for the `claude` CLI). 2026-10-04: Path B Connect and Disconnect run in the app against a pretend home with existing hooks: backup written, hooks added, link created; Disconnect restored the file byte for byte and removed the link and its folders
 
 ## Disconnect (Settings)
 

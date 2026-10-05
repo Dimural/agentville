@@ -79,7 +79,7 @@ Tool names come from Claude Code and change over time. **Verify** them against t
 
 ## "Done" announcement rule
 
-`Stop` fires at the end of **every turn**. The walk-on is governed by a setting (open question 1): `DoneAnnouncement` = **every turn**, **long turns** (≥ `Timing.announceDoneMinTurn`, 20 s; the default) or **never**. The store applies it (`SessionStore.announceDone`) and marks each `finished` effect `announce: true/false`; only the walk-on (crew inside) follows it. Inside the office, every `Stop` shows the cheer, and a roaming character always cheers with its Done! bubble. A turn whose start wasn't seen (hooks installed mid-turn) counts as short. Until the Settings window (M7) the choice is in the status menu: **Announce Finished Turns** ▸ Every Turn / Turns of 20 s or More / Never.
+`Stop` fires at the end of **every turn**. The walk-on is governed by a setting (open question 1): `DoneAnnouncement` = **every turn**, **long turns** (≥ `Timing.announceDoneMinTurn`, 20 s; the default) or **never**. The store applies it (`SessionStore.announceDone`) and marks each `finished` effect `announce: true/false`; only the walk-on (crew inside) follows it. Inside the office, every `Stop` shows the cheer, and a roaming character always cheers with its Done! bubble. A turn whose start wasn't seen (hooks installed mid-turn) counts as short. Until the Settings window (M7) the choice is in the Settings → **Walk on when a turn finishes**: Every turn / Turns of 20 s or more / Never.
 
 ## Done when
 

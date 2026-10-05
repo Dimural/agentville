@@ -40,7 +40,7 @@ trap cleanup EXIT
 
 for i in $(seq "$copies"); do
   sock="$dir/s$i.sock"
-  AGENTVILLE_SOCKET="$sock" "$bin/Agentville" --release-crew --diagnostics-stderr 2>"$dir/diag-$i.txt" >/dev/null &
+  AGENTVILLE_SOCKET="$sock" "$bin/Agentville" --release-crew --no-welcome --diagnostics-stderr 2>"$dir/diag-$i.txt" >/dev/null &
   pids+=($!)
   for _ in $(seq 50); do [[ -S "$sock" ]] && break; sleep 0.1; done
   # A steady load: 100 sessions at $rate events/s, repeated until the soak ends.

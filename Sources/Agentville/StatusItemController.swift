@@ -13,18 +13,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let header = NSMenuItem(title: "", action: nil, keyEquivalent: "")
     private let keepOpen = NSMenuItem(title: "Keep Panel Open", action: nil, keyEquivalent: "")
     private let crewItem = NSMenuItem(title: "Release the crew", action: nil, keyEquivalent: "")
-    private let announceItems: [(DoneAnnouncement, NSMenuItem)] = [
-        (.everyTurn, NSMenuItem(title: "Every Turn", action: nil, keyEquivalent: "")),
-        (.longTurns, NSMenuItem(title: "Turns of \(Int(Timing.announceDoneMinTurn)) s or More", action: nil, keyEquivalent: "")),
-        (.never, NSMenuItem(title: "Never", action: nil, keyEquivalent: "")),
-    ]
-    /// The user picked when finished turns walk on.
-    var onAnnounceChange: ((DoneAnnouncement) -> Void)?
+    /// Settings… (⌘,): the done rule, hide names, Connect/Disconnect and Diagnostics live there.
+    var onSettings: (() -> Void)?
     /// Release / call back, and whether the crew is out (for the item's title).
     var onToggleCrew: (() -> Void)?
     var isReleased: () -> Bool = { false }
-    /// The in-memory diagnostics, for "Copy Diagnostics" (bug 0001; the full Diagnostics view is M7).
-    var diagnostics: () -> String = { "" }
     private let dot = CALayer()
     private var needsYou = false
     private let onTogglePanel: () -> Void
@@ -64,20 +57,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         keepOpen.target = self
         keepOpen.action = #selector(togglePin)
         menu.addItem(keepOpen)
-        let announce = NSMenuItem(title: "Announce Finished Turns", action: nil, keyEquivalent: "")
-        announce.submenu = NSMenu()
-        for (rule, item) in announceItems {
-            item.target = self
-            item.action = #selector(pickAnnounce(_:))
-            item.representedObject = rule.rawValue
-            announce.submenu?.addItem(item)
-        }
-        menu.addItem(announce)
         menu.addItem(.separator())
-        let copy = NSMenuItem(title: "Copy Diagnostics", action: #selector(copyDiagnostics), keyEquivalent: "")
-        copy.target = self
-        copy.toolTip = "Copies what the app has been doing (kept in memory only) to the clipboard"
-        menu.addItem(copy)
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(NSMenuItem(title: "Quit Agentville", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
@@ -156,23 +139,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         keepOpen.state = isPinned() ? .on : .off
         crewItem.title = isReleased() ? "Call the crew back" : "Release the crew"
-        let current = Preferences.announceDone
-        for (rule, item) in announceItems { item.state = rule == current ? .on : .off }
     }
 
-    @objc private func pickAnnounce(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let rule = DoneAnnouncement(rawValue: raw) else { return }
-        Preferences.announceDone = rule
-        onAnnounceChange?(rule)
-    }
+    @objc private func openSettings() { onSettings?() }
 
     @objc private func toggleCrew() { onToggleCrew?() }
-
-    /// Only when the user asks: to the clipboard, never to a file (non-negotiable #8).
-    @objc private func copyDiagnostics() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(diagnostics(), forType: .string)
-    }
 
     /// Where the crew flies when the desk panel is closed: just under the icon (prototype `menuIconPos`).
     var iconHome: CGPoint? {

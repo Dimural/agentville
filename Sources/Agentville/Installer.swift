@@ -23,7 +23,11 @@ enum Installer {
         }
     }
 
-    static var home: String { NSHomeDirectory() }
+    /// Development only: `AGENTVILLE_HOME=/tmp/x` makes Connect and Disconnect work on a pretend
+    /// home (its `.claude`, its link, and `HOME` for the `claude` CLI), so they can be tried
+    /// without touching the real `~/.claude`.
+    static let homeOverride = ProcessInfo.processInfo.environment["AGENTVILLE_HOME"].flatMap { $0.isEmpty ? nil : $0 }
+    static var home: String { homeOverride ?? NSHomeDirectory() }
 
     // MARK: - Helper link
 
@@ -79,6 +83,16 @@ enum Installer {
         } catch {
             return "helper link not repaired: \(error)"
         }
+    }
+
+    // MARK: - Connection
+
+    static var installedPluginsPath: String { home + "/.claude/plugins/installed_plugins.json" }
+
+    /// Read-only: which path (if any) is set up.
+    static func detectConnection() -> Connection {
+        Connection.detect(installedPlugins: try? String(contentsOfFile: installedPluginsPath, encoding: .utf8),
+                          settings: try? readSettings())
     }
 
     // MARK: - Path B: ~/.claude/settings.json
@@ -167,6 +181,11 @@ enum Installer {
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: executable)
                 p.arguments = args
+                if let h = homeOverride {
+                    var env = ProcessInfo.processInfo.environment
+                    env["HOME"] = h
+                    p.environment = env
+                }
                 let pipe = Pipe()
                 p.standardOutput = pipe
                 p.standardError = pipe

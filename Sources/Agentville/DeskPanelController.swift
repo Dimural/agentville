@@ -252,7 +252,7 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     // MARK: - Office
 
     private func drawOffice() {
-        let sessions = app.store.ordered
+        let sessions = app.shownOrdered
         let clock = Calendar.current.dateComponents([.hour, .minute], from: Date())
         let scene = OfficeScene(sessions: sessions, awayIDs: away(), night: Theme.isDark(office),
                                 clock: (clock.hour ?? 0, clock.minute ?? 0))
@@ -288,7 +288,8 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
         shownSecond = second
         shownBlink = blink
 
-        rows = store.ordered.map { DeskList.Row($0, now: now) }
+        let shown = app.shownOrdered
+        rows = shown.map { DeskList.Row($0, now: now) }
         // Rebuild rows only when their number changes. Otherwise every cell just shows rows[r], so
         // updating the visible ones in place is enough, and much cheaper in an event storm than
         // `reloadData`, which makes every visible row view again (docs/quality/performance-budget.md).
@@ -299,7 +300,7 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
             let visible = table.rows(in: table.visibleRect)
             for r in visible.location..<(visible.location + visible.length) where r < rows.count {
                 (table.view(atColumn: 0, row: r, makeIfNecessary: false) as? SessionRowView)?
-                    .show(rows[r], avatar: avatar(for: store.ordered[r].look), blinkOff: blink)
+                    .show(rows[r], avatar: avatar(for: shown[r].look), blinkOff: blink)
             }
         }
         summary.attributedStringValue = Self.summaryText(DeskList.summary(s))
@@ -339,7 +340,7 @@ final class DeskPanelController: NSObject, NSWindowDelegate, NSTableViewDataSour
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         guard row < rows.count else { return nil }
         let view = (tableView.makeView(withIdentifier: SessionRowView.id, owner: nil) as? SessionRowView) ?? SessionRowView()
-        let ordered = app.store.ordered
+        let ordered = app.shownOrdered
         let look = row < ordered.count ? ordered[row].look : LookGenerator.look(for: rows[row].name)
         view.show(rows[row], avatar: avatar(for: look), blinkOff: shownBlink)
         return view

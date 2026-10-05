@@ -1,5 +1,5 @@
 // Lifecycle and ownership: socket listener → session store → status item, desk panel and the
-// crew's overlay (roamers, the crowd and walk-ons).
+// crew's overlay (roamers, the crowd and walk-ons); the welcome and Settings windows (M7).
 import AgentvilleCore
 import AppKit
 
@@ -16,8 +16,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var tickTimer: Timer?
     /// SIGTERM/SIGINT (`kill`, Ctrl-C) become a normal quit, so the socket file is removed then too.
     private var signalSources: [DispatchSourceSignal] = []
-    /// In memory only (non-negotiable #8); copied from the status menu.
+    /// In memory only (non-negotiable #8); shown and copied in Settings.
     private(set) var diagnostics = Diagnostics()
+    /// What the app received, newest last: the exact privacy boundary, in memory only.
+    private(set) var eventFeed = Diagnostics()
+    /// Uptime of the last event received, for "Last event N s ago".
+    private(set) var lastEventAt: TimeInterval?
+    let connect = ConnectModel()
+    let settings = SettingsModel()
+    private var welcomeWindow: WelcomeWindowController?
+    private var settingsWindow: SettingsWindowController?
     /// Coalesces status item updates so a storm of batches redraws at most at 4 Hz.
     private var refreshPending = false
 
@@ -38,9 +46,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         buildStatusItem()
         startListening()
         log("launched; \(listener == nil ? "not listening (socket unavailable)" : "listening")")
-        // A link left dangling by a moved or replaced app is pointed back at this copy (ADR 0007).
-        // Creating a missing one waits for Connect (M7).
-        if let done = Installer.repairLinkAtLaunch(connected: false) { log(done) }
+        wireSettings()
+        log("Claude Code: \(connect.connection)")
+        // Re-point a link left dangling by a moved or replaced app at this copy, and recreate a
+        // missing one while connected (ADR 0007).
+        if let done = Installer.repairLinkAtLaunch(connected: connect.connection.isConnected) { log(done) }
+        // First run, and every launch until connected (docs/product/user-experience.md#first-run).
+        // `--no-welcome` keeps scripted runs (soak, quit check) quiet.
+        if !connect.connection.isConnected, !CommandLine.arguments.contains("--no-welcome") { showWelcome() }
+        devFlags()
         hotKey = HotKey { [weak self] in self?.toggleCrew() }
         quitOnSignals()
         // Finished → idle and staleness need a clock. Cheap, coarse and tolerant, so idle stays idle.
@@ -103,8 +117,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let now = Self.now()
         let before = store.order
         var effects: [StoreEffect] = []
-        for e in batch { effects += store.apply(e, now: now) }
-        if store.order != before { overlay?.sessionsChanged(store.ordered) }
+        let hide = settings.hideNames
+        for e in batch {
+            effects += store.apply(e, now: now)
+            eventFeed.log("\(e.event.rawValue) \(e.tool ?? "-") \(hide ? "(name hidden)" : e.project) \(e.session.prefix(8))")
+        }
+        if !batch.isEmpty { lastEventAt = now }
+        if store.order != before { overlay?.sessionsChanged(shownOrdered) }
         // Finished turns and sessions that need you walk on while the crew is inside (M6).
         if Self.wantsWalkOn(effects) { crew().notify(effects) } else { overlay?.notify(effects) }
         scheduleRefresh()
@@ -126,8 +145,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let before = store.revision, order = store.order
         // Stale sessions (docs/product/sessions-and-states.md#staleness) leave like ended ones.
         store.tick(now: Self.now())
-        if store.order != order { overlay?.sessionsChanged(store.ordered) }
+        if store.order != order { overlay?.sessionsChanged(shownOrdered) }
         if store.revision != before { scheduleRefresh() }
+    }
+
+    // MARK: - Hide names (open question 10)
+
+    private var shownCache: (revision: Int, ordered: [Session], byID: [String: Session])?
+
+    /// The sessions as everything on screen should show them: masked while "Hide project names" is on.
+    var shownOrdered: [Session] { shown().ordered }
+    private var shownSessions: [String: Session] { shown().byID }
+
+    private func shown() -> (ordered: [Session], byID: [String: Session]) {
+        guard settings.hideNames else { return (store.ordered, store.sessions) }
+        if let c = shownCache, c.revision == store.revision { return (c.ordered, c.byID) }
+        let masked = NameMask.apply(store.ordered)
+        let byID = Dictionary(uniqueKeysWithValues: masked.map { ($0.id, $0) })
+        shownCache = (store.revision, masked, byID)
+        return (masked, byID)
+    }
+
+    // MARK: - Welcome and Settings (M7)
+
+    private func wireSettings() {
+        connect.lastEventAt = { [weak self] in self?.lastEventAt }
+        connect.log = { [weak self] in self?.log($0) }
+        settings.onAnnounceChange = { [weak self] rule in self?.store.announceDone = rule }
+        settings.onHideNamesChange = { [weak self] _ in
+            guard let self else { return }
+            shownCache = nil
+            overlay?.sessionsChanged(shownOrdered)
+            deskPanel?.refreshList(force: true)
+        }
+        settings.diagnostics = { [weak self] in
+            guard let self else { return ("", [], []) }
+            return (diagnosticsSummary(), eventFeed.lines, diagnostics.lines)
+        }
+        settings.copyDiagnostics = { [weak self] in
+            guard let self else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(diagnosticsText(), forType: .string)
+        }
+        settings.showWelcome = { [weak self] in self?.showWelcome() }
+    }
+
+    /// Dev only, to try the windows and Connect without clicking (with `AGENTVILLE_HOME` set, so the
+    /// real ~/.claude is never touched): `--show-settings`; `--dev-connect=settings` shows Path B's
+    /// preview, then approves it 3 s later; `--dev-disconnect` disconnects after 2 s.
+    private func devFlags() {
+        let args = CommandLine.arguments
+        if args.contains("--show-settings") { showSettings() }
+        guard Installer.homeOverride != nil else { return }
+        if args.contains("--dev-connect=settings") {
+            showWelcome()
+            connect.preparePreview()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in MainActor.assumeIsolated { self?.connect.confirmPreview() } }
+        }
+        if args.contains("--dev-disconnect") {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .seconds(2))
+                await self?.connect.disconnect()
+            }
+        }
+    }
+
+    func showWelcome() {
+        connect.refresh()
+        if welcomeWindow == nil { welcomeWindow = WelcomeWindowController(model: connect) }
+        welcomeWindow?.show()
+    }
+
+    func showSettings() {
+        if settingsWindow == nil { settingsWindow = SettingsWindowController(settings: settings, connect: connect) }
+        settingsWindow?.show()
     }
 
     private func scheduleRefresh() {
@@ -154,17 +245,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             })
         statusItem?.onToggleCrew = { [weak self] in self?.toggleCrew() }
         statusItem?.isReleased = { [weak self] in self?.overlay?.sim.released ?? false }
-        statusItem?.onAnnounceChange = { [weak self] rule in self?.store.announceDone = rule }
-        statusItem?.diagnostics = { [weak self] in self?.diagnosticsText() ?? "" }
+        statusItem?.onSettings = { [weak self] in self?.showSettings() }
     }
 
-    private func diagnosticsText() -> String {
+    private func diagnosticsSummary() -> String {
         let stats = listener?.stats
         let o = overlay
-        var head = "Agentville diagnostics\n"
-        head += "sessions: \(store.order.count), events received: \(stats?.received ?? 0), dropped: \(stats?.dropped ?? 0)\n"
-        head += "crew: \(o?.sim.released == true ? "out" : "inside"), overlay: \(o?.stateDescription ?? "not created")\n\n"
-        return head + diagnostics.text
+        return "sessions: \(store.order.count), events received: \(stats?.received ?? 0), dropped: \(stats?.dropped ?? 0)\n"
+            + "crew: \(o?.sim.released == true ? "out" : "inside"), overlay: \(o?.stateDescription ?? "not created")\n"
+            + "Claude Code: \(connect.connection)"
+    }
+
+    /// Copy Diagnostics: the summary and what the app did. Not the event feed, which holds folder names.
+    private func diagnosticsText() -> String {
+        "Agentville diagnostics\n" + diagnosticsSummary() + "\n\n" + diagnostics.text
     }
 
     private func refreshStatusItem() {
@@ -191,13 +285,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let o = overlay { return o }
         let o = OverlayController()
         o.log = { [weak self] in self?.log($0) }
-        o.sessions = { [weak self] in self?.store.sessions ?? [:] }
+        o.sessions = { [weak self] in self?.shownSessions ?? [:] }
         o.sim.home = { [weak self, weak o] id in
             guard let self, let o else { return Home(x: 0, y: 0, scale: 1) }
             return self.home(for: id, overlay: o)
         }
         o.onEvent = { [weak self] e in if e == .gulp { self?.deskPanel?.gulp() } }
-        o.sessionsChanged(store.ordered)
+        o.sessionsChanged(shownOrdered)
         overlay = o
         return o
     }
@@ -209,7 +303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             // Like the prototype: the crew pours out of the desk panel, so open it first.
             if !p.isVisible { p.show() }
-            if o.release(store.ordered).contains(.burp) { p.burp() }
+            if o.release(shownOrdered).contains(.burp) { p.burp() }
         }
         p.setReleased(o.sim.released)
     }

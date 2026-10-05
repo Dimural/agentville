@@ -10,8 +10,18 @@ Purpose: everything the user sees and does, in order. The prototype is the refer
    - **Path A (preferred):** if the `claude` CLI is found, add this repo as a marketplace and install the `agentville` plugin at user scope. Show the exact commands and their output in a disclosure area.
    - **Path B (fallback):** add a clearly marked hooks entry to `~/.claude/settings.json`, after showing a preview and writing a timestamped backup.
 4. Confirm: **"Connected. Restart any open Claude Code sessions to see them."** (Hooks load when a session starts.)
-5. A live line reads "Waiting for the first event…", which becomes "Last event 3 s ago".
-6. From then on the app lives in the **menu bar** only (no Dock icon).
+5. A live line reads "Waiting for the first event…", which becomes "Last event 3 s ago". If `"disableAllHooks": true` is in the settings, it says so at once; if nothing arrives 90 s after Connect, it suggests restarting sessions and sending a prompt.
+6. **Done** closes the window. From then on the app lives in the **menu bar** only (no Dock icon).
+
+Details (built in M7): under the button, a small link, **Or add the hooks to settings.json yourself…**, goes straight to Path B's preview (for people who'd rather not use the CLI). Path B's preview names the file, shows the entry and the 12 events, says a backup is made first, and has a disclosure with the whole file after the change; **Add Hooks** writes it, **Cancel** changes nothing. If the CLI fails, the error is shown with **Add the hooks to settings.json instead…**. A **Details** disclosure shows each command and its output. The window comes back at every launch until Claude Code is connected (detected from `~/.claude/plugins/installed_plugins.json` and `settings.json`, read only).
+
+## Settings
+
+One window, three groups:
+
+- **General:** **Open at login** (off; the system login item, only for the bundled app), **Walk on when a turn finishes** (Every turn / Turns of 20 s or more / Never), **Hide project names** ("session 1", "session 2"… in the list, the bubbles and the event feed; off), and the shortcut, **⌃⌥C** (shown, not yet changeable).
+- **Claude Code:** how it's connected (plugin, settings file, plugin turned off, both, or not at all), the live line, **Connect to Claude Code** when not connected, **Disconnect** when connected. "Both" warns that every event arrives twice and offers **Remove the settings-file hooks**.
+- **Diagnostics:** counts (sessions, events received and dropped, the crew and overlay state, the connection), then **What the app received** (the last 200 events: event, tool, folder and the start of the session id, which is exactly what crosses the privacy boundary) and **What the app did** (wake, sleep, stalls, display changes, connect), both in memory only. **Copy Diagnostics** copies the counts and what the app did, not the received events (they hold folder names).
 
 ## Menu bar item
 
@@ -19,9 +29,7 @@ It shows a pixel head, the active session count, and a red dot when any session 
 
 - **Release the crew / Call the crew back** (⌃⌥C)
 - **Keep Panel Open** (the panel's pin)
-- **Announce Finished Turns** ▸ Every Turn / Turns of 20 s or More / Never (moves into Settings in M7)
-- **Settings…** (M7)
-- **Copy Diagnostics**: copies a short in-memory record of what the app did (overlay woke, slept, stalled, display changes; never session contents) to the clipboard, for bug reports. Moves into Settings' Diagnostics view in M7
+- **Settings…** (⌘,)
 - **Quit Agentville** (⌘Q)
 
 The menu header shows "N sessions".

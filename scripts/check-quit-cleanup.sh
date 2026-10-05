@@ -18,7 +18,7 @@ trap 'rm -rf "$dir"' EXIT
 fail=0
 
 for sig in TERM INT; do
-  AGENTVILLE_SOCKET="$sock" "$app" --release-crew >/dev/null 2>&1 &
+  AGENTVILLE_SOCKET="$sock" "$app" --release-crew --no-welcome >/dev/null 2>&1 &
   pid=$!
   for _ in $(seq 50); do [[ -S "$sock" ]] && break; sleep 0.1; done
   if [[ ! -S "$sock" ]]; then echo "FAIL ($sig): the app never opened its socket"; kill -9 "$pid" 2>/dev/null; fail=1; continue; fi
