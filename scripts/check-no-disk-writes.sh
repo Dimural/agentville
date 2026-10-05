@@ -36,6 +36,7 @@ scan() { # $1 = root; $2 = allowlist file
   for f in $files; do
     if [ -f "$allow" ] && grep -qxF "$f" "$allow"; then continue; fi
     case "$f" in Sources/agentville-replay/*) continue ;; esac # dev tool: prints to the terminal, writes no files
+    case "$f" in Sources/agentville-icon/*) continue ;; esac   # build tool: writes the icon set at bundle time, never at run time
     for p in "${WRITE_PATTERNS[@]}"; do
       if grep -En "$p" "$root/$f" | grep -vE '^[0-9]+:[[:space:]]*//' | sed "s|^|$f:|"; then bad=1; fi
     done

@@ -47,6 +47,10 @@ Bubbles clamp inside the screen, sit above the emote, and fade with the characte
 - **No Anthropic or Claude logos, mascots, colours used as branding, or anything that implies officialness.**
 - Dark mode: the office window shows night (stars, moon, darker wall and floor). The menu bar icon follows the system appearance (template image).
 
+## The app icon
+
+`AppIcon` (Core, `AppIconTests`): the welcome window's character (`LookGenerator.look(for: "agentville")`, head and shoulders from `SpriteRenderer.avatar`) at three pixels per sprite pixel, on a rounded orange (`#FFA300`) tile with a 2-pixel ink (`#1A1330`) ring, a lighter top band and a darker bottom band, on a 64×64 grid with the usual macOS margin. Whole multiples of 64 are scaled nearest-neighbour; 16 and 32 pt are drawn down smoothly. Built 2026-10-04; waiting for the owner's look.
+
 ## Done when
 
 - [x] Every sprite renders pixel-exact to the prototype: `SpriteRendererTests` (19 looks: every style × accessory, all 4 patterns; 741 frames + 8 emotes from `sprite-vectors.json`)

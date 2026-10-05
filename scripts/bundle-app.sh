@@ -26,6 +26,11 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Helpers" "$app/Contents/Resources"
 cp "$bin/Agentville" "$app/Contents/MacOS/Agentville"
 cp "$bin/agentville-hook" "$app/Contents/Helpers/agentville-hook"
 cp LICENSE "$app/Contents/Resources/LICENSE" 2>/dev/null || true
+# The icon (AppIcon in Core), drawn by agentville-icon and packed by iconutil.
+iconset="$(mktemp -d)/AppIcon.iconset"
+"$bin/agentville-icon" "$iconset"
+iconutil -c icns "$iconset" -o "$app/Contents/Resources/AppIcon.icns"
+rm -rf "$(dirname "$iconset")"
 
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -43,6 +48,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleDevelopmentRegion</key><string>en</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSHumanReadableCopyright</key><string>© Dimural Murat. MIT licence.</string>

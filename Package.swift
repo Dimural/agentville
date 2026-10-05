@@ -8,6 +8,7 @@ let package = Package(
     products: [
         .executable(name: "agentville-hook", targets: ["agentville-hook"]),
         .executable(name: "agentville-replay", targets: ["agentville-replay"]),
+        .executable(name: "agentville-icon", targets: ["agentville-icon"]),
         .executable(name: "Agentville", targets: ["Agentville"]),
         .library(name: "AgentvilleCore", targets: ["AgentvilleCore"]),
         .library(name: "AgentvilleWire", targets: ["AgentvilleWire"]),
@@ -24,6 +25,9 @@ let package = Package(
 
         // Dev tool: sends scripted WireEvents to the app's socket.
         .executableTarget(name: "agentville-replay", dependencies: ["AgentvilleCore"]),
+
+        // Build tool: writes the app icon (AppIcon) as an .iconset for scripts/bundle-app.sh.
+        .executableTarget(name: "agentville-icon", dependencies: ["AgentvilleCore"]),
 
         // The menu bar app.
         .executableTarget(

@@ -47,6 +47,7 @@ Sources/AgentvilleCore/      pure, testable app logic (re-exports AgentvilleWire
   Support/                   Diagnostics: the in-memory diagnostics buffer
 Sources/agentville-hook/     the hook helper Claude Code runs (links only AgentvilleWire)
 Sources/agentville-replay/   dev tool: sends scripted events to the app socket
+Sources/agentville-icon/     build tool: writes the app icon (AppIcon in Core) for scripts/bundle-app.sh
 Sources/Agentville/          the menu bar app (AppKit + SpriteKit)
 Tests/                       Swift Testing suites + fixtures
 Plugin/agentville/           the Claude Code plugin (manifest + hooks/hooks.json)
